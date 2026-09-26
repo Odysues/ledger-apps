@@ -1,8 +1,11 @@
 // Offline support: app shell is cached on install; pages go network-first so updates arrive,
 // everything else (pdf.js, fonts) is served from cache and refreshed in the background.
 const PREFIX = "sole-";
-const CACHE = PREFIX + "v1";
-const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png",
+const CACHE = PREFIX + "v2";
+const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png", "../firebase-config.js",
+  "https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js",
+  "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js",
+  "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js",
   "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js",
   "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"];
 
@@ -23,7 +26,7 @@ self.addEventListener("fetch", e => {
     }).catch(() => caches.match("./index.html")));
     return;
   }
-  const cacheable = url.origin === location.origin || /(^|\.)cdnjs\.cloudflare\.com$|fonts\.(googleapis|gstatic)\.com$/.test(url.hostname);
+  const cacheable = url.origin === location.origin || /(^|\.)cdnjs\.cloudflare\.com$|fonts\.(googleapis|gstatic)\.com$|^www\.gstatic\.com$/.test(url.hostname);
   if (!cacheable) return;
   e.respondWith(caches.open(CACHE).then(async c => {
     const hit = await c.match(req);

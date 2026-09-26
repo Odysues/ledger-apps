@@ -295,6 +295,10 @@
   </div>
 </div>
 
+<script src="../firebase-config.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
 (function(){
@@ -844,13 +848,18 @@ function wireGlobalDrop(){
 }
 
 /* =========================================================
-   CLOUD SYNC (Claude "db" capability — syncs this ledger across
-   every device signed into the same Claude account)
+   CLOUD SYNC (Firebase) — sign in on each device and the whole
+   ledger syncs through one private document per app.
 ========================================================= */
 let cloudDoc=null;
-let cloudStatus="off"; // off | connecting | synced | local-only | error
+let cloudStatus="off"; // off | local-only | signed-out | connecting | syncing | synced | offline | error | toobig
 let lastAppliedAt=0;
 let cloudSyncTimer=null;
+const SYNC_DOC="sole";
+const LOCAL_TS_KEY="sole_local_updated_v1", SYNCED_UID_KEY="sole_synced_uid_v1";
+let localUpdatedAt=+loadJSON(LOCAL_TS_KEY,0)||0;
+let fbUser=null, fbUnsub=null, authError="";
+const SYNC_ARRAYS=["CATEGORIES","TRANSACTIONS","INVOICES","CLIENTS","MILEAGE","PROPERTIES","TENANCIES","CERTIFICATES","LOANS","LOAN_REPAYMENTS"];
 
 function currentStateSnapshot(){
   return {SETTINGS,CATEGORIES,TRANSACTIONS,INVOICES,CLIENTS,MILEAGE,PROPERTIES,TENANCIES,CERTIFICATES,LOANS,LOAN_REPAYMENTS};
@@ -876,50 +885,171 @@ function applyCloudData(data){
   else if(id==="propertydetail" && currentPropertyId) renderPropertyDetail(currentPropertyId);
   else if(id==="loandetail" && currentLoanId) renderLoanDetail(currentLoanId);
 }
+function firebaseReady(){ return !!(window.firebase && window.FIREBASE_CONFIG && window.FIREBASE_CONFIG.apiKey); }
+function hasLocalData(){ return !!(TRANSACTIONS.length||INVOICES.length||CLIENTS.length||MILEAGE.length||PROPERTIES.length||LOANS.length); }
+// First time a device links to an account: keep everything from both sides (matched by id)
+function mergeStates(local, remote){
+  const out=Object.assign({}, remote);
+  SYNC_ARRAYS.forEach(k=>{
+    const map=new Map();
+    (remote[k]||[]).forEach(x=>map.set(x.id,x));
+    (local[k]||[]).forEach(x=>{ if(!map.has(x.id)) map.set(x.id,x); });
+    out[k]=[...map.values()];
+  });
+  const ls=local.SETTINGS||{}, rs=remote.SETTINGS||{}, s={};
+  new Set([...Object.keys(ls),...Object.keys(rs)]).forEach(k=>{ s[k]=(rs[k]!==undefined && rs[k]!=="" && rs[k]!==null)?rs[k]:ls[k]; });
+  s.nextInvoiceNumber=Math.max(+ls.nextInvoiceNumber||1, +rs.nextInvoiceNumber||1);
+  out.SETTINGS=s;
+  return out;
+}
 async function pushCloudState(){
   if(!cloudDoc) return;
-  const updatedAt=Date.now();
-  const payload=Object.assign({updatedAt}, currentStateSnapshot());
+  const updatedAt=localUpdatedAt||Date.now();
+  const json=JSON.stringify(currentStateSnapshot());
+  if(json.length>950000){ cloudStatus="toobig"; renderSettingsSyncStatus(); return; }
+  lastAppliedAt=Math.max(lastAppliedAt, updatedAt);
+  cloudStatus="syncing"; renderSettingsSyncStatus();
   try{
-    await cloudDoc.set(payload);
-    lastAppliedAt=updatedAt;
+    await cloudDoc.set({updatedAt, data:json});
     cloudStatus="synced";
   }catch(e){
-    cloudStatus="error";
+    cloudStatus=navigator.onLine?"error":"offline";
   }
   renderSettingsSyncStatus();
 }
 function queueCloudSync(){
+  localUpdatedAt=Date.now(); saveJSON(LOCAL_TS_KEY, localUpdatedAt);
   if(!cloudDoc) return;
   clearTimeout(cloudSyncTimer);
   cloudSyncTimer=setTimeout(pushCloudState, 700);
 }
-async function initCloudSync(){
-  if(!(window.claude && typeof window.claude.use==="function")){ cloudStatus="local-only"; return; }
+function initCloudSync(){
+  if(!firebaseReady()){ cloudStatus="local-only"; renderSettingsSyncStatus(); return; }
+  try{ if(!firebase.apps.length) firebase.initializeApp(window.FIREBASE_CONFIG); }
+  catch(e){ cloudStatus="local-only"; renderSettingsSyncStatus(); return; }
   cloudStatus="connecting";
-  let db;
-  try{ db=await window.claude.use("db"); }catch(e){ db=null; }
-  if(!db){ cloudStatus="local-only"; renderSettingsSyncStatus(); return; }
-  cloudDoc=db.doc("soletrader/data");
-  cloudDoc.onSnapshot(snap=>{
-    if(snap.exists){
-      const data=snap.data();
-      if(data && typeof data.updatedAt==="number" && data.updatedAt>lastAppliedAt){
-        lastAppliedAt=data.updatedAt;
-        applyCloudData(data);
+  firebase.auth().getRedirectResult().catch(e=>{ authError=friendlyAuthError(e); renderSettingsSyncStatus(); });
+  firebase.auth().onAuthStateChanged(user=>{
+    fbUser=user;
+    if(fbUnsub){ fbUnsub(); fbUnsub=null; }
+    cloudDoc=null;
+    if(!user){ cloudStatus="signed-out"; renderSettingsSyncStatus(); refreshDashboardIfShown(); return; }
+    authError="";
+    cloudStatus="connecting"; renderSettingsSyncStatus(); refreshDashboardIfShown();
+    const ref=firebase.firestore().collection("users").doc(user.uid).collection("ledgers").doc(SYNC_DOC);
+    cloudDoc=ref;
+    fbUnsub=ref.onSnapshot(snap=>{
+      if(snap.metadata && snap.metadata.hasPendingWrites) return;
+      const firstLink=loadJSON(SYNCED_UID_KEY,null)!==user.uid;
+      if(!snap.exists){
+        saveJSON(SYNCED_UID_KEY,user.uid);
+        if(!localUpdatedAt){ localUpdatedAt=Date.now(); saveJSON(LOCAL_TS_KEY,localUpdatedAt); }
+        pushCloudState();
+        return;
       }
-      cloudStatus="synced";
-    } else {
-      pushCloudState();
-    }
-    renderSettingsSyncStatus();
-  }, ()=>{ cloudStatus="error"; renderSettingsSyncStatus(); });
+      const d=snap.data();
+      let remote;
+      try{ remote=JSON.parse(d.data); }catch(e){ cloudStatus="error"; renderSettingsSyncStatus(); return; }
+      if(firstLink){
+        saveJSON(SYNCED_UID_KEY,user.uid);
+        if(hasLocalData()){
+          applyCloudData(mergeStates(currentStateSnapshot(), remote));
+          queueCloudSync();
+          return;
+        }
+      }
+      if(firstLink || d.updatedAt>localUpdatedAt){
+        localUpdatedAt=d.updatedAt; saveJSON(LOCAL_TS_KEY,localUpdatedAt);
+        lastAppliedAt=d.updatedAt;
+        applyCloudData(remote);
+      } else if(d.updatedAt<localUpdatedAt){
+        pushCloudState(); // this device has newer changes, e.g. made while offline
+        return;
+      }
+      cloudStatus="synced"; renderSettingsSyncStatus();
+    }, err=>{ cloudStatus="error"; authError=err&&err.code==="permission-denied"?"The online database refused access. Check the Firestore security rules.":""; renderSettingsSyncStatus(); });
+  });
+  addEventListener("online",()=>{ if(cloudDoc && localUpdatedAt>lastAppliedAt) pushCloudState(); });
+}
+function friendlyAuthError(e){
+  const c=(e&&e.code)||"";
+  return ({
+    "auth/invalid-email":"That email address doesn't look right.",
+    "auth/missing-password":"Enter your password.",
+    "auth/weak-password":"Use a password of at least 6 characters.",
+    "auth/email-already-in-use":"There's already an account with that email. Use Sign in instead.",
+    "auth/invalid-credential":"Email or password is incorrect.",
+    "auth/wrong-password":"Email or password is incorrect.",
+    "auth/user-not-found":"No account with that email. Use Create account.",
+    "auth/too-many-requests":"Too many attempts. Wait a minute and try again.",
+    "auth/network-request-failed":"No internet connection.",
+    "auth/unauthorized-domain":"This web address isn't allowed to sign in yet. Add it under Authentication → Settings → Authorized domains.",
+    "auth/operation-not-allowed":"This sign-in method isn't switched on in Firebase yet.",
+    "auth/popup-closed-by-user":"",
+    "auth/cancelled-popup-request":"",
+  })[c] ?? ("Couldn't sign in ("+(c||"unknown error")+").");
+}
+function signInGoogle(){
+  const p=new firebase.auth.GoogleAuthProvider();
+  authError=""; renderSettingsSyncStatus();
+  firebase.auth().signInWithPopup(p).catch(e=>{
+    if(e.code==="auth/popup-blocked"||e.code==="auth/operation-not-supported-in-this-environment") return firebase.auth().signInWithRedirect(p);
+    authError=friendlyAuthError(e); renderSettingsSyncStatus();
+  });
+}
+function signInEmail(create){
+  const em=(document.getElementById("syEmail")||{}).value||"", pw=(document.getElementById("syPass")||{}).value||"";
+  authError=""; renderSettingsSyncStatus();
+  const a=firebase.auth();
+  (create?a.createUserWithEmailAndPassword(em.trim(),pw):a.signInWithEmailAndPassword(em.trim(),pw))
+    .catch(e=>{ authError=friendlyAuthError(e); renderSettingsSyncStatus(); });
+}
+function signOutSync(){
+  try{ localStorage.removeItem(SYNCED_UID_KEY); }catch(e){}
+  firebase.auth().signOut();
+}
+function refreshDashboardIfShown(){
+  const v=document.getElementById("view-dashboard");
+  if(v && v.classList.contains("active")) renderDashboard();
+}
+function syncBannerHTML(){
+  if(!firebaseReady() || fbUser || cloudStatus!=="signed-out") return "";
+  return `<div class="card" id="syncBanner" style="padding:14px 16px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; gap:10px; cursor:pointer;">
+    <div><b style="font-size:14px;">Sync between your phone and computer</b><div style="font-size:12px;color:var(--ink-soft);margin-top:2px;">Sign in once on each device to keep your books in step.</div></div>${ICONS.chev}</div>`;
 }
 function renderSettingsSyncStatus(){
   const el=document.getElementById("syncStatusLine");
-  if(!el) return;
-  const LABEL={off:"Not started", connecting:"Connecting…", synced:"Synced across your devices", "local-only":"Saved in this browser only", error:"Sync error — data still saved on this device"};
-  el.textContent=LABEL[cloudStatus]||"";
+  if(el){
+    const who=fbUser?(fbUser.email||"your account"):"";
+    const LABEL={off:"Starting…", "local-only":"Not available offline — saved in this browser", "signed-out":"Off — sign in to sync", connecting:"Connecting…",
+      syncing:"Syncing…", synced:"Synced as "+who, offline:"Offline — will sync when you're back online", error:"Sync problem — your data is still saved here", toobig:"Too much data to sync in one piece"};
+    el.textContent=LABEL[cloudStatus]||"";
+  }
+  const panel=document.getElementById("syncPanel");
+  if(!panel) return;
+  const err=authError?`<div style="color:var(--danger); font-size:12.5px; margin:6px 0 10px;">${escHTML(authError)}</div>`:"";
+  if(!firebaseReady()){ panel.innerHTML=`<p class="note">Sync needs an internet connection the first time this app loads.</p>`; return; }
+  if(fbUser){
+    panel.innerHTML=`${err}<div style="display:flex; gap:10px; margin-bottom:16px;">
+      <button class="btn btn-ghost" style="flex:1;" id="sySyncNow">Sync now</button>
+      <button class="btn btn-ghost" style="flex:1;" id="sySignOut">Sign out</button></div>`;
+    panel.querySelector("#sySyncNow").onclick=()=>{ localUpdatedAt=Math.max(localUpdatedAt,lastAppliedAt); pushCloudState(); };
+    panel.querySelector("#sySignOut").onclick=signOutSync;
+    return;
+  }
+  const keepEmail=(document.getElementById("syEmail")||{}).value||"";
+  panel.innerHTML=`<p class="note" style="margin:0 0 12px;">Sign in with the same account on your phone and computer and your books stay in step. Your data is private to your account.</p>
+    ${err}
+    <button class="btn btn-ghost btn-block" id="syGoogle" style="margin-bottom:14px;">Sign in with Google</button>
+    <div class="field"><label for="syEmail">Or use email</label><input type="email" id="syEmail" autocomplete="email" placeholder="you@example.com" value="${escAttr(keepEmail)}"></div>
+    <div class="field"><label for="syPass">Password</label><input type="password" id="syPass" autocomplete="current-password" placeholder="At least 6 characters"></div>
+    <div style="display:flex; gap:10px; margin-bottom:16px;">
+      <button class="btn btn-accent" style="flex:1;" id="sySignIn">Sign in</button>
+      <button class="btn btn-ghost" style="flex:1;" id="syCreate">Create account</button>
+    </div>`;
+  panel.querySelector("#syGoogle").onclick=signInGoogle;
+  panel.querySelector("#sySignIn").onclick=()=>signInEmail(false);
+  panel.querySelector("#syCreate").onclick=()=>signInEmail(true);
 }
 
 function uid(prefix){ return (prefix||"id")+"_"+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
@@ -1180,6 +1310,7 @@ function renderDashboard(){
       <div><b style="font-size:14px;">${unpaidInvoices.length} unpaid invoice${unpaidInvoices.length===1?"":"s"}</b><div style="font-size:12px;color:var(--ink-soft);margin-top:2px;">${money(unpaidTotal)} outstanding</div></div>
       ${ICONS.chev}
     </div>`:""}
+    ${syncBannerHTML()}
     <div class="section-label">Recent Activity</div>
     <div id="dRecent"></div>
     ${TRANSACTIONS.length>recent.length?`<button class="btn btn-ghost btn-block" id="dViewAll" style="margin-bottom:10px;">View all ${TRANSACTIONS.length} transactions</button>`:""}
@@ -1199,6 +1330,8 @@ function renderDashboard(){
   const cc=el.querySelector("#certAlertCard");
   if(cc) cc.addEventListener("click",openProperties);
   el.querySelector("#dAddBtn").addEventListener("click",()=>openTxForm(null));
+  const syncBanner=el.querySelector("#syncBanner");
+  if(syncBanner) syncBanner.addEventListener("click",()=>{ navReturn="more"; pushView("settings", renderSettings); });
   const viewAll=el.querySelector("#dViewAll");
   if(viewAll) viewAll.addEventListener("click",()=>{ ledgerFilter="all"; ledgerSearch=""; ledgerFrom=""; ledgerTo=""; showTab("ledger"); });
   el.querySelector("#dScanBtn").addEventListener("click",()=>pickReceipt());
@@ -2666,14 +2799,15 @@ function renderSettings(){
     <button class="btn btn-accent btn-block" id="sSave">Save Settings</button>
     <div class="section-label">Data</div>
     <div class="field" style="display:flex; align-items:center; justify-content:space-between; background:var(--surface); border:1px solid var(--border); border-radius:11px; padding:13px;">
-      <label style="margin:0;">Cloud Sync</label>
+      <label style="margin:0;">Sync</label>
       <span id="syncStatusLine" style="font-size:12.5px; color:var(--ink-soft);"></span>
     </div>
+    <div id="syncPanel"></div>
     <button class="btn btn-ghost btn-block" id="sExport">Export All Data (JSON)</button>
     <button class="btn btn-ghost btn-block" id="sImport" style="margin-top:10px;">Import Data (JSON)</button>
     <input type="file" id="sImportFile" accept=".json,application/json" hidden>
     <div id="sImportMsg" class="note" style="margin-top:8px;"></div>
-    <p class="note" style="margin-top:10px;">Everything is saved in this browser on this device. Use Export regularly as a backup, and Import to move your data to another device or browser. Attached PDFs stay on the device they were added on.</p>
+    <p class="note" style="margin-top:10px;">Your data is saved in this browser, and online too when sync is on. Export regularly as an extra backup; Import restores one. Attached PDFs stay on the device they were added on.</p>
   `;
   renderSettingsSyncStatus();
   el.querySelector("#sSave").addEventListener("click",()=>{
@@ -2697,6 +2831,7 @@ function renderSettings(){
   importBtn.addEventListener("click",()=>{
     if(pendingImport){
       applyCloudData(pendingImport);
+      queueCloudSync();
       const n=(pendingImport.TRANSACTIONS||[]).length;
       pendingImport=null;
       showToast("Imported "+n+" transaction"+(n===1?"":"s"));
