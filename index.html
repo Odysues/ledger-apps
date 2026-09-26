@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ledger Apps</title>
+<meta name="description" content="Company and sole trader bookkeeping apps.">
+<link rel="icon" href="company/icon-192.png" type="image/png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:wght@600;700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F6F5F1; --surface:#FFFFFF; --ink:#1B1B18; --ink-soft:#63605A; --border:#DDD9CF;
+    color-scheme:light;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#131412; --surface:#1C1D1A; --ink:#EFEEE9; --ink-soft:#A3A09A; --border:#30312C; color-scheme:dark; }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:"Public Sans",-apple-system,"Segoe UI",sans-serif; -webkit-font-smoothing:antialiased;}
+  main{max-width:720px; margin:0 auto; padding:56px 20px 40px;}
+  h1{font-family:"Newsreader",Georgia,serif; font-weight:700; font-size:36px; margin:0 0 8px; text-wrap:balance;}
+  .lede{color:var(--ink-soft); font-size:15px; line-height:1.55; margin:0 0 32px; max-width:56ch;}
+  .apps{display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:14px;}
+  a.app{display:flex; gap:16px; align-items:flex-start; padding:20px; background:var(--surface); border:1px solid var(--border); border-radius:16px; color:inherit; text-decoration:none;}
+  a.app:hover, a.app:focus-visible{border-color:var(--ink-soft); outline:none;}
+  a.app img{width:52px; height:52px; flex:none;}
+  a.app b{display:block; font-family:"Newsreader",Georgia,serif; font-size:21px; margin-bottom:4px;}
+  a.app span{color:var(--ink-soft); font-size:13.5px; line-height:1.5;}
+  .tip{margin-top:32px; color:var(--ink-soft); font-size:13px; line-height:1.6; max-width:60ch;}
+</style>
+</head>
+<body>
+<main>
+  <h1>Ledger Apps</h1>
+  <p class="lede">Two separate bookkeeping apps. Each keeps its own data in this browser, so the company books and your sole trader books never mix.</p>
+  <div class="apps">
+    <a class="app" href="company/"><img src="company/icon-192.png" alt=""><div><b>Ledger</b><span>Company books: properties, tenancies, loans, invoices, VAT and profit &amp; loss.</span></div></a>
+    <a class="app" href="sole-trader/"><img src="sole-trader/icon-192.png" alt=""><div><b>Sole Trader Ledger</b><span>Self-employed books: drawings, invoices, mileage and a Self Assessment tax estimate.</span></div></a>
+  </div>
+  <p class="tip">To add one to your computer or phone, open it and choose <b>Install</b> in the browser's address bar or menu (on iPhone: Share → Add to Home Screen). Back up regularly with Settings → Export All Data.</p>
+</main>
+</body>
+</html>

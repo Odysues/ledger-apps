@@ -1,0 +1,2749 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8">
+<meta name="description" content="Company bookkeeping: income, expenses, invoices, properties, loans, mileage and VAT.">
+<title>Ledger</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F7F5F0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Ledger">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,500;0,600;0,700;1,500&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  [hidden]{display:none!important}
+  img{max-width:100%}
+  :root{
+    --bg:#F7F5F0; --surface:#FFFFFF; --surface-2:#EFEBE1;
+    --ink:#1C1B17; --ink-soft:#6B6558; --ink-faint:#9A927E; --border:#DED8C8;
+    --accent:#1F5C4A; --accent-ink:#FFFFFF;
+    --danger:#B23A2E; --danger-ink:#FFFFFF;
+    --warn:#96681C; --warn-bg:#F1E4C6;
+    --shadow: 0 1px 2px rgba(30,25,10,.05), 0 8px 22px -14px rgba(30,25,10,.25);
+    --radius:14px;
+    --safe-t: env(safe-area-inset-top, 0px);
+    --safe-b: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#14140F; --surface:#1D1C16; --surface-2:#242319;
+      --ink:#F2EFE6; --ink-soft:#A79F8C; --ink-faint:#6F6857; --border:#332F22;
+      --accent:#4CAF8C; --accent-ink:#06231A;
+      --danger:#E2685A; --danger-ink:#2A0906;
+      --warn:#E8C874; --warn-bg:#332B12;
+      --shadow: 0 1px 2px rgba(0,0,0,.35), 0 8px 22px -14px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14140F; --surface:#1D1C16; --surface-2:#242319;
+    --ink:#F2EFE6; --ink-soft:#A79F8C; --ink-faint:#6F6857; --border:#332F22;
+    --accent:#4CAF8C; --accent-ink:#06231A;
+    --danger:#E2685A; --danger-ink:#2A0906;
+    --warn:#E8C874; --warn-bg:#332B12;
+    --shadow: 0 1px 2px rgba(0,0,0,.35), 0 8px 22px -14px rgba(0,0,0,.6);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--bg); color:var(--ink); font-family:"Public Sans",-apple-system,"Segoe UI",sans-serif; min-height:100vh; -webkit-font-smoothing:antialiased; overscroll-behavior-y:none;}
+  h1,h2,h3{font-family:"Newsreader",Georgia,serif; font-weight:600; text-wrap:balance; margin:0;}
+  ::selection{background:var(--accent); color:var(--accent-ink);}
+  button{font-family:inherit;}
+  input,select,textarea{font-family:inherit; font-size:16px;}
+  .tabular{font-variant-numeric:tabular-nums;}
+  a{color:inherit;}
+
+  #app{max-width:640px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column; position:relative;}
+  header.topbar{display:flex; align-items:center; gap:12px; padding:calc(14px + var(--safe-t)) 18px 14px; position:sticky; top:0; z-index:20; background:var(--bg); border-bottom:1px solid var(--border);}
+  .mark{width:36px; height:36px; flex:none; border-radius:9px; background:var(--accent); color:var(--accent-ink); display:flex; align-items:center; justify-content:center; font-family:"Newsreader",serif; font-weight:700; font-size:19px; box-shadow:var(--shadow);}
+  .brand{display:flex; flex-direction:column; line-height:1.1;}
+  .brand b{font-family:"Newsreader",serif; font-weight:700; font-size:19px;}
+  .brand span{font-size:10.5px; color:var(--ink-soft); letter-spacing:.05em; text-transform:uppercase;}
+  .backbtn,.iconbtn{width:36px; height:36px; border-radius:9px; border:1px solid var(--border); background:var(--surface); color:var(--ink); display:flex; align-items:center; justify-content:center; flex:none; cursor:pointer;}
+  .backbtn svg,.iconbtn svg{width:17px; height:17px;}
+  .topbar-spacer{flex:1;}
+
+  main{flex:1; padding:18px 18px calc(96px + var(--safe-b));}
+  .view{display:none;}
+  .view.active{display:block; animation:fade .16s ease;}
+  @media (prefers-reduced-motion: reduce){ .view.active{animation:none;} }
+  @keyframes fade{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;}}
+
+  nav.tabbar{position:fixed; bottom:0; left:0; right:0; z-index:20; display:flex; justify-content:space-around; background:var(--surface); border-top:1px solid var(--border); padding:8px 4px calc(8px + var(--safe-b));}
+  .tab{display:flex; flex-direction:column; align-items:center; gap:3px; background:none; border:none; color:var(--ink-faint); padding:6px 10px; border-radius:12px; cursor:pointer;}
+  .tab svg{width:21px; height:21px;}
+  .tab .lbl{font-size:10px; letter-spacing:.02em; font-weight:600; text-transform:uppercase;}
+  .tab.active{color:var(--accent);}
+
+  .eyebrow{font-size:11px; letter-spacing:.09em; text-transform:uppercase; color:var(--accent); font-weight:700; margin-bottom:6px;}
+  .pagehead{margin-bottom:18px; display:flex; align-items:flex-start; justify-content:space-between; gap:12px;}
+  .pagehead h2{font-size:27px;}
+  .pagehead p{color:var(--ink-soft); font-size:13.5px; margin-top:6px; max-width:52ch;}
+  .pagehead .fab{flex:none;}
+
+  .card{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow);}
+  .btn{display:inline-flex; align-items:center; justify-content:center; gap:8px; border:none; border-radius:11px; padding:13px 18px; font-size:14.5px; font-weight:600; cursor:pointer; min-height:46px;}
+  .btn-accent{background:var(--accent); color:var(--accent-ink);}
+  .btn-ghost{background:var(--surface); color:var(--ink); border:1px solid var(--border);}
+  .btn-danger{background:var(--danger); color:var(--danger-ink);}
+  .btn-sm{padding:9px 14px; font-size:13px; min-height:36px; border-radius:9px;}
+  .btn-block{width:100%;}
+  .btn:active{transform:scale(.98);}
+  .btn:disabled{opacity:.4; cursor:default;}
+  .fabbtn{width:44px; height:44px; border-radius:12px; background:var(--accent); color:var(--accent-ink); border:none; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:var(--shadow);}
+  .fabbtn svg{width:20px; height:20px;}
+  .btn svg{width:16px; height:16px; flex:none;}
+
+  /* stats */
+  .stat-row{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:20px;}
+  .stat-row.two{grid-template-columns:repeat(2,1fr);}
+  .stat-tile{background:var(--surface); border:1px solid var(--border); border-radius:13px; padding:13px 12px;}
+  .stat-tile b{display:block; font-family:"Newsreader",serif; font-weight:700; font-size:21px; line-height:1.1;}
+  .stat-tile span{font-size:10.5px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.04em;}
+  .stat-tile.income b{color:var(--accent);}
+  .stat-tile.expense b{color:var(--danger);}
+
+  .weekbar{display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;}
+  .weekbar .range{font-size:14px; font-weight:600;}
+
+  .section-label{font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft); margin:22px 0 10px;}
+  .section-label:first-child{margin-top:0;}
+
+  .row{display:flex; align-items:center; gap:12px; padding:12px; background:var(--surface); border:1px solid var(--border); border-radius:12px; margin-bottom:8px; cursor:pointer;}
+  .row .catdot{width:9px; height:9px; border-radius:50%; flex:none;}
+  .row .mid{flex:1; min-width:0;}
+  .row .mid b{display:block; font-size:14px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .row .mid span{font-size:11.5px; color:var(--ink-soft);}
+  .row .amt{font-family:"Newsreader",serif; font-weight:700; font-size:15px; flex:none; text-align:right;}
+  .row .amt.income{color:var(--accent);}
+  .row .amt.expense{color:var(--danger);}
+  .row .clip{width:14px; height:14px; flex:none; color:var(--ink-faint);}
+  .row .mid .fname{display:flex; align-items:center; gap:4px; margin-top:2px; color:var(--ink-soft); overflow:hidden; white-space:nowrap; text-overflow:ellipsis;}
+  .row .mid .fname svg{width:12px; height:12px; flex:none;}
+  .row .mid .fname em{font-style:normal; overflow:hidden; text-overflow:ellipsis;}
+  .dup-warn{background:var(--warn-bg); color:var(--warn); border-radius:12px; padding:12px 14px; margin-bottom:12px; font-size:12.5px; line-height:1.5;}
+  .dup-warn b{color:var(--warn);}
+  .dup-warn ul{margin:6px 0 0; padding-left:18px;}
+  .attach-card{background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:12px 14px; display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:16px;}
+  .attach-card .name{display:flex; align-items:center; gap:8px; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0;}
+  .attach-card .name svg{width:15px; height:15px; flex:none; color:var(--ink-soft);}
+  .attach-actions{display:flex; gap:6px; flex:none;}
+  .dropzone{border:1.5px dashed var(--border); border-radius:14px; padding:28px 18px; text-align:center; color:var(--ink-soft); font-size:13px; margin-bottom:18px; cursor:pointer;}
+  .dropzone svg{width:24px; height:24px; margin-bottom:8px; color:var(--ink-faint);}
+  .dropzone.over{border-color:var(--accent); color:var(--accent);}
+  .empty{text-align:center; padding:44px 20px; color:var(--ink-soft); font-size:13.5px;}
+  .empty .btn{margin-top:14px;}
+
+  .chiprow{display:flex; gap:8px; overflow-x:auto; padding-bottom:2px; margin-bottom:16px; -webkit-overflow-scrolling:touch;}
+  .chiprow::-webkit-scrollbar{display:none;}
+  .chip{flex:none; border:1px solid var(--border); background:var(--surface); color:var(--ink-soft); font-size:12.5px; font-weight:600; padding:8px 14px; border-radius:999px; cursor:pointer; white-space:nowrap;}
+  .chip.active{background:var(--ink); color:var(--bg); border-color:var(--ink);}
+  .searchbar{margin-bottom:14px;}
+  .searchbar input{width:100%; border:1px solid var(--border); background:var(--surface); border-radius:12px; padding:12px 14px; color:var(--ink); outline:none;}
+  .searchbar input:focus{border-color:var(--accent);}
+
+  .badge{display:inline-block; font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; padding:4px 9px; border-radius:999px;}
+  .badge.draft{background:var(--surface-2); color:var(--ink-soft);}
+  .badge.sent{background:var(--warn-bg); color:var(--warn);}
+  .badge.paid{background:var(--accent); color:var(--accent-ink);}
+  .badge.overdue{background:var(--danger); color:var(--danger-ink);}
+
+  /* forms */
+  .field{margin-bottom:16px;}
+  .field label{display:block; font-size:12px; font-weight:600; color:var(--ink-soft); margin-bottom:6px; text-transform:uppercase; letter-spacing:.03em;}
+  .field input, .field select, .field textarea{width:100%; border:1px solid var(--border); background:var(--surface); border-radius:11px; padding:12px 13px; color:var(--ink); outline:none;}
+  .field input:focus, .field select:focus, .field textarea:focus{border-color:var(--accent);}
+  .field textarea{resize:vertical; min-height:70px;}
+  .field-row{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  .segrow{display:flex; gap:6px; background:var(--surface-2); border:1px solid var(--border); padding:4px; border-radius:12px; margin-bottom:18px;}
+  .seg{flex:1; text-align:center; border:none; background:none; color:var(--ink-soft); font-size:13px; font-weight:600; padding:9px 8px; border-radius:9px; cursor:pointer;}
+  .seg.active{background:var(--surface); color:var(--ink); box-shadow:var(--shadow);}
+  .formsheet{padding-bottom:20px;}
+  .inline-del{width:34px; height:34px; border-radius:9px; border:none; background:var(--surface-2); color:var(--ink-faint); display:flex; align-items:center; justify-content:center; cursor:pointer; flex:none;}
+  .inline-del svg{width:15px; height:15px;}
+
+  /* more menu */
+  .more-row{display:flex; align-items:center; gap:14px; padding:14px 16px; background:var(--surface); border:1px solid var(--border); border-radius:13px; margin-bottom:10px; cursor:pointer;}
+  .more-row .glyph{width:38px; height:38px; border-radius:10px; background:var(--surface-2); color:var(--accent); display:flex; align-items:center; justify-content:center; flex:none;}
+  .more-row .glyph svg{width:19px; height:19px;}
+  .more-row .txt{flex:1;}
+  .more-row .txt b{display:block; font-size:14.5px; font-weight:600;}
+  .more-row .txt span{font-size:12px; color:var(--ink-soft);}
+  .more-row .chev{color:var(--ink-faint); flex:none;}
+  .more-row .chev svg{width:16px; height:16px;}
+
+  /* invoice */
+  .invoice-sheet{background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:26px 22px; box-shadow:var(--shadow); margin-bottom:18px;}
+  .invoice-head{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:22px; gap:14px;}
+  .invoice-head .from b{font-family:"Newsreader",serif; font-size:19px; font-weight:700; display:block;}
+  .invoice-head .from span{font-size:12.5px; color:var(--ink-soft); white-space:pre-line;}
+  .invoice-head .meta{text-align:right;}
+  .invoice-head .meta .title{font-family:"Newsreader",serif; font-size:22px; font-weight:700;}
+  .invoice-head .meta div{font-size:12.5px; color:var(--ink-soft); margin-top:2px;}
+  .invoice-to{margin-bottom:20px;}
+  .invoice-to .lbl{font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-faint); margin-bottom:4px;}
+  .invoice-to b{font-size:14.5px;}
+  .invoice-to span{display:block; font-size:12.5px; color:var(--ink-soft); white-space:pre-line;}
+  table.itable{width:100%; border-collapse:collapse; margin-bottom:6px;}
+  table.itable th{text-align:left; font-size:10.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-faint); padding:0 8px 8px 0; border-bottom:1px solid var(--border); font-weight:600;}
+  table.itable th.num, table.itable td.num{text-align:right;}
+  table.itable td{padding:9px 8px 9px 0; border-bottom:1px solid var(--border); font-size:13.5px;}
+  .itotals{margin-left:auto; width:220px; margin-top:10px;}
+  .itotals div{display:flex; justify-content:space-between; font-size:13.5px; padding:4px 0;}
+  .itotals .grand{font-weight:700; font-size:16px; border-top:1px solid var(--border); margin-top:4px; padding-top:8px;}
+  .invoice-notes{margin-top:20px; font-size:12.5px; color:var(--ink-soft); white-space:pre-line; border-top:1px solid var(--border); padding-top:14px;}
+  .lineitem-row{display:grid; grid-template-columns:1fr 56px 76px 64px 32px; gap:8px; align-items:end; margin-bottom:10px;}
+  .lineitem-row .field{margin-bottom:0;}
+
+  .print-sheet{display:none;}
+
+  @media print{
+    body *{visibility:hidden;}
+    .invoice-sheet, .invoice-sheet *{visibility:visible;}
+    .invoice-sheet{position:absolute; top:0; left:0; width:100%; border:none; box-shadow:none; margin:0; padding:0;}
+    .print-sheet{display:block !important; visibility:visible;}
+    .print-sheet *{visibility:visible;}
+    .print-sheet{position:absolute; top:0; left:0; width:100%; border:none; box-shadow:none; margin:0; padding:0;}
+  }
+
+  @media (min-width:720px){
+    #app{max-width:none; flex-direction:row; width:100%;}
+    body{display:flex;}
+    nav.tabbar{position:sticky; top:0; bottom:auto; left:0; height:100vh; width:210px; flex-direction:column; justify-content:flex-start; align-items:stretch; gap:6px; border-top:none; border-right:1px solid var(--border); padding:calc(20px + var(--safe-t)) 14px 20px;}
+    .tab{flex-direction:row; justify-content:flex-start; padding:11px 14px;}
+    .tab .lbl{font-size:13px;}
+    .mainarea{flex:1; display:flex; flex-direction:column; max-width:640px; margin:0 auto;}
+    .field-row.three{grid-template-columns:repeat(3,1fr);}
+  }
+  .drop-overlay{position:fixed; inset:0; z-index:60; background:color-mix(in srgb, var(--bg) 88%, transparent); display:flex; align-items:center; justify-content:center; padding:24px; pointer-events:none;}
+  .drop-overlay .drop-box{border:2px dashed var(--accent); border-radius:18px; background:var(--surface); padding:34px 28px; text-align:center; max-width:380px; box-shadow:var(--shadow);}
+  .drop-overlay svg{width:30px; height:30px; color:var(--accent); margin-bottom:10px;}
+  .drop-overlay b{display:block; font-family:"Newsreader",serif; font-size:21px; margin-bottom:6px;}
+  .drop-overlay span{font-size:13px; color:var(--ink-soft);}
+  .toast{position:fixed; left:50%; transform:translateX(-50%); bottom:calc(84px + var(--safe-b)); z-index:70; background:var(--ink); color:var(--bg); font-size:13.5px; font-weight:600; padding:11px 16px; border-radius:11px; box-shadow:var(--shadow); max-width:calc(100% - 32px);}
+  .toast.error{background:var(--danger); color:var(--danger-ink);}
+  .scan-card{background:var(--surface-2); border:1px solid var(--border); border-radius:12px; padding:12px 14px; margin-bottom:16px; font-size:12.5px; color:var(--ink-soft); line-height:1.5;}
+  .scan-card b{color:var(--ink);}
+  .scan-card.warn{background:var(--warn-bg); color:var(--warn); border-color:transparent;}
+  .scan-card.warn b{color:var(--warn);}
+  .pagehead-actions{display:flex; gap:8px; flex:none;}
+  .ghostfab{width:44px; height:44px; border-radius:12px; background:var(--surface); color:var(--accent); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; cursor:pointer;}
+  .ghostfab svg{width:19px; height:19px;}
+  @media (min-width:720px){ .toast{bottom:28px;} }
+  .note{color:var(--ink-soft); font-size:12.5px; line-height:1.5;}
+  .batch-item{padding:14px; margin-bottom:12px;}
+  .batch-item.off{opacity:.55;}
+  .batch-item .field{margin-bottom:10px;}
+  .batch-head{display:flex; gap:10px; align-items:flex-start; margin-bottom:12px; cursor:pointer;}
+  .batch-head input{width:20px; height:20px; margin-top:1px; flex:none; accent-color:var(--accent);}
+  .batch-name{display:flex; align-items:center; gap:6px; font-weight:600; font-size:13.5px; word-break:break-all;}
+  .batch-name svg{width:14px; height:14px; flex:none; color:var(--ink-soft);}
+  .batch-sum{font-size:12px; color:var(--ink-soft); margin-top:3px; line-height:1.45;}
+</style>
+</head>
+<body>
+<div class="drop-overlay" id="dropOverlay" hidden><div class="drop-box">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+  <b>Drop your PDFs</b><span>The total, VAT, date and supplier are read automatically, and the file is saved with the transaction.</span>
+</div></div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+<input type="file" accept="application/pdf,.pdf" id="receiptInput" multiple hidden>
+
+<div id="app">
+  <nav class="tabbar" id="tabbar"></nav>
+  <div class="mainarea">
+    <header class="topbar" id="topbar"></header>
+    <main>
+      <section class="view" id="view-dashboard"></section>
+      <section class="view" id="view-ledger"></section>
+      <section class="view" id="view-invoices"></section>
+      <section class="view" id="view-more"></section>
+      <section class="view" id="view-txform"></section>
+      <section class="view" id="view-invoiceform"></section>
+      <section class="view" id="view-invoicedetail"></section>
+      <section class="view" id="view-mileage"></section>
+      <section class="view" id="view-mileageform"></section>
+      <section class="view" id="view-vat"></section>
+      <section class="view" id="view-clients"></section>
+      <section class="view" id="view-clientform"></section>
+      <section class="view" id="view-categories"></section>
+      <section class="view" id="view-settings"></section>
+      <section class="view" id="view-loans"></section>
+      <section class="view" id="view-loandetail"></section>
+      <section class="view" id="view-loanform"></section>
+      <section class="view" id="view-repayform"></section>
+      <section class="view" id="view-properties"></section>
+      <section class="view" id="view-propertydetail"></section>
+      <section class="view" id="view-propertyform"></section>
+      <section class="view" id="view-tenancyform"></section>
+      <section class="view" id="view-certform"></section>
+      <section class="view" id="view-plreport"></section>
+      <section class="view" id="view-archive"></section>
+      <section class="view" id="view-batch"></section>
+    </main>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+(function(){
+"use strict";
+
+/* =========================================================
+   ICONS
+========================================================= */
+const ICONS={
+  home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 12 3l9 6.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"></path></svg>',
+  book:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v18H6.5A2.5 2.5 0 0 0 4 22.5v-18z"></path><path d="M20 17H6.5A2.5 2.5 0 0 0 4 19.5"></path></svg>',
+  invoice:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="13" y2="17"></line></svg>',
+  more:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>',
+  back:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>',
+  chev:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>',
+  plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>',
+  trash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>',
+  car:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17h14M5 17a2 2 0 1 0 4 0M15 17a2 2 0 1 0 4 0M3 17V11l2-5h14l2 5v6"></path></svg>',
+  percent:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="5" y2="19"></line><circle cx="6.5" cy="6.5" r="2.5"></circle><circle cx="17.5" cy="17.5" r="2.5"></circle></svg>',
+  users:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>',
+  tag:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 11 3.83A2 2 0 0 0 9.59 3.24L3 3v6.59a2 2 0 0 0 .59 1.41l9.58 9.58a2 2 0 0 0 2.83 0l4.59-4.59a2 2 0 0 0 0-2.83z"></path><circle cx="7.5" cy="7.5" r="1.5"></circle></svg>',
+  gear:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>',
+  print:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>',
+  bank:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="21" x2="21" y2="21"></line><line x1="5" y1="21" x2="5" y2="10"></line><line x1="9" y1="21" x2="9" y2="10"></line><line x1="15" y1="21" x2="15" y2="10"></line><line x1="19" y1="21" x2="19" y2="10"></line><polygon points="12 3 21 8 3 8"></polygon></svg>',
+  building:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="1"></rect><line x1="9" y1="7" x2="9.01" y2="7"></line><line x1="15" y1="7" x2="15.01" y2="7"></line><line x1="9" y1="12" x2="9.01" y2="12"></line><line x1="15" y1="12" x2="15.01" y2="12"></line><line x1="9" y1="17" x2="9.01" y2="17"></line><line x1="15" y1="17" x2="15.01" y2="17"></line></svg>',
+  shield:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v6c0 5 3.5 9 8 11 4.5-2 8-6 8-11V5z"></path><polyline points="9 12 11 14 15 10"></polyline></svg>',
+  key:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"></circle><path d="M21 2l-9.6 9.6"></path><path d="M15.5 7.5 18 10l3-3-2.5-2.5"></path></svg>',
+  alert:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>',
+  chart:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line><line x1="6" y1="20" x2="6" y2="16"></line></svg>',
+  paperclip:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>',
+  upload:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>',
+};
+
+/* =========================================================
+   DEFAULT CATEGORIES
+========================================================= */
+const DEFAULT_CATEGORIES=[
+  {id:"rental-income",label:"Rental Income",type:"income",color:"#1F5C4A"},
+  {id:"sales",label:"Sales & Services",type:"income",color:"#3E7A63"},
+  {id:"other-income",label:"Other Income",type:"income",color:"#4C8A7A"},
+  {id:"advertising",label:"Advertising & Marketing",type:"expense",color:"#B23A2E"},
+  {id:"bank-charges",label:"Bank Charges & Interest",type:"expense",color:"#8C4A2E"},
+  {id:"insurance",label:"Insurance",type:"expense",color:"#8C6A2E"},
+  {id:"it-software",label:"IT & Software",type:"expense",color:"#2E6A8C"},
+  {id:"legal-professional",label:"Legal & Professional Fees",type:"expense",color:"#5A2E8C"},
+  {id:"letting-agent-fees",label:"Letting & Managing Agent Fees",type:"expense",color:"#2E6A5A"},
+  {id:"ground-rent-service-charge",label:"Ground Rent & Service Charges",type:"expense",color:"#4A6A2E"},
+  {id:"motor",label:"Motor Expenses",type:"expense",color:"#8C2E6A"},
+  {id:"mileage",label:"Mileage",type:"expense",color:"#2E8C6A"},
+  {id:"office-supplies",label:"Office Supplies",type:"expense",color:"#8C7A2E"},
+  {id:"postage-stationery",label:"Postage & Stationery",type:"expense",color:"#6A8C2E"},
+  {id:"premises",label:"Premises Costs",type:"expense",color:"#2E4A8C"},
+  {id:"repairs",label:"Repairs & Maintenance",type:"expense",color:"#8C5A2E"},
+  {id:"staff-costs",label:"Staff Costs",type:"expense",color:"#2E8C4A"},
+  {id:"subcontractors",label:"Subcontractors",type:"expense",color:"#4A2E8C"},
+  {id:"subscriptions",label:"Subscriptions & Memberships",type:"expense",color:"#8C2E2E"},
+  {id:"telephone-internet",label:"Telephone & Internet",type:"expense",color:"#2E8C8C"},
+  {id:"training",label:"Training",type:"expense",color:"#6A2E8C"},
+  {id:"travel-subsistence",label:"Travel & Subsistence",type:"expense",color:"#8C4A6A"},
+  {id:"directors-remuneration",label:"Directors' Remuneration",type:"expense",color:"#2E5A8C"},
+  {id:"dividends",label:"Dividends",type:"expense",color:"#8C6A4A"},
+  {id:"loan-interest",label:"Loan Interest",type:"expense",color:"#8C2E2E"},
+  {id:"other-expense",label:"Other Expenses",type:"expense",color:"#767066"},
+];
+
+/* =========================================================
+   STORAGE
+========================================================= */
+function loadJSON(key, fallback){ try{ const v=JSON.parse(localStorage.getItem(key)); return v==null?fallback:v; }catch(e){ return fallback; } }
+function saveJSON(key, val){ try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){} }
+
+let SETTINGS = loadJSON("ledger_settings_v1", {
+  companyName:"", regNumber:"", vatNumber:"", vatEnabled:true, address:"", email:"", phone:"",
+  invoicePrefix:"INV-", nextInvoiceNumber:1, defaultVatRate:20, mileageVehicle:"car"
+});
+function saveSettings(){ saveJSON("ledger_settings_v1", SETTINGS); queueCloudSync(); }
+
+let CATEGORIES = loadJSON("ledger_categories_v1", null);
+if(!CATEGORIES){ CATEGORIES = DEFAULT_CATEGORIES.slice(); saveJSON("ledger_categories_v1", CATEGORIES); }
+else {
+  // Guard against app-logic-critical categories missing from a previously-saved list (e.g. after an update adds a new built-in category)
+  let patched=false;
+  ["loan-interest","rental-income","letting-agent-fees","ground-rent-service-charge"].forEach(id=>{
+    if(!CATEGORIES.some(c=>c.id===id)){
+      const def=DEFAULT_CATEGORIES.find(c=>c.id===id);
+      if(def){ CATEGORIES.push(def); patched=true; }
+    }
+  });
+  if(patched) saveJSON("ledger_categories_v1", CATEGORIES);
+}
+function saveCategories(){ saveJSON("ledger_categories_v1", CATEGORIES); queueCloudSync(); }
+function catById(id){ return CATEGORIES.find(c=>c.id===id); }
+
+let TRANSACTIONS = loadJSON("ledger_transactions_v1", []);
+function saveTransactions(){ saveJSON("ledger_transactions_v1", TRANSACTIONS); queueCloudSync(); }
+
+let INVOICES = loadJSON("ledger_invoices_v1", []);
+function saveInvoices(){ saveJSON("ledger_invoices_v1", INVOICES); queueCloudSync(); }
+
+let CLIENTS = loadJSON("ledger_clients_v1", []);
+function saveClients(){ saveJSON("ledger_clients_v1", CLIENTS); queueCloudSync(); }
+
+let MILEAGE = loadJSON("ledger_mileage_v1", []);
+function saveMileage(){ saveJSON("ledger_mileage_v1", MILEAGE); queueCloudSync(); }
+
+let LOANS = loadJSON("ledger_loans_v1", []);
+function saveLoans(){ saveJSON("ledger_loans_v1", LOANS); queueCloudSync(); }
+let LOAN_REPAYMENTS = loadJSON("ledger_loan_repayments_v1", []);
+function saveLoanRepayments(){ saveJSON("ledger_loan_repayments_v1", LOAN_REPAYMENTS); queueCloudSync(); }
+
+let PROPERTIES = loadJSON("ledger_properties_v1", []);
+function saveProperties(){ saveJSON("ledger_properties_v1", PROPERTIES); queueCloudSync(); }
+let TENANCIES = loadJSON("ledger_tenancies_v1", []);
+function saveTenancies(){ saveJSON("ledger_tenancies_v1", TENANCIES); queueCloudSync(); }
+let CERTIFICATES = loadJSON("ledger_certificates_v1", []);
+function saveCertificates(){ saveJSON("ledger_certificates_v1", CERTIFICATES); queueCloudSync(); }
+
+/* =========================================================
+   INVOICE ATTACHMENTS
+   PDF files are kept on this device only, in IndexedDB (they're
+   too large for the synced JSON ledger doc). The transaction
+   record itself — amount, date, category — still syncs normally.
+========================================================= */
+if(window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+const ATTACH_DB="ledger_attachments_v1", ATTACH_STORE="files";
+let attachDBPromise=null;
+function openAttachDB(){
+  if(attachDBPromise) return attachDBPromise;
+  attachDBPromise=new Promise((resolve,reject)=>{
+    const req=indexedDB.open(ATTACH_DB,1);
+    req.onupgradeneeded=()=>{ req.result.createObjectStore(ATTACH_STORE,{keyPath:"id"}); };
+    req.onsuccess=()=>resolve(req.result);
+    req.onerror=()=>reject(req.error);
+  });
+  return attachDBPromise;
+}
+async function saveAttachment(id, file){
+  const db=await openAttachDB();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(ATTACH_STORE,"readwrite");
+    tx.objectStore(ATTACH_STORE).put({id, blob:file, filename:file.name, savedAt:Date.now()});
+    tx.oncomplete=()=>resolve();
+    tx.onerror=()=>reject(tx.error);
+  });
+}
+async function getAttachment(id){
+  const db=await openAttachDB();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(ATTACH_STORE,"readonly");
+    const req=tx.objectStore(ATTACH_STORE).get(id);
+    req.onsuccess=()=>resolve(req.result||null);
+    req.onerror=()=>reject(req.error);
+  });
+}
+async function deleteAttachment(id){
+  if(!id) return;
+  try{
+    const db=await openAttachDB();
+    await new Promise((resolve,reject)=>{
+      const tx=db.transaction(ATTACH_STORE,"readwrite");
+      tx.objectStore(ATTACH_STORE).delete(id);
+      tx.oncomplete=()=>resolve();
+      tx.onerror=()=>reject(tx.error);
+    });
+  }catch(e){ /* best-effort cleanup */ }
+}
+let lastAttachUrl=null;
+async function openAttachment(id){
+  const rec=await getAttachment(id);
+  if(!rec) return false;
+  if(lastAttachUrl) URL.revokeObjectURL(lastAttachUrl);
+  lastAttachUrl=URL.createObjectURL(rec.blob);
+  window.open(lastAttachUrl, "_blank");
+  return true;
+}
+
+// Best-effort extraction — works on text-based PDFs (most emailed invoices and receipts), not on scanned photos.
+async function pdfTextLines(file){
+  const buf=await file.arrayBuffer();
+  const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+  const lines=[];
+  for(let i=1;i<=pdf.numPages;i++){
+    const page=await pdf.getPage(i);
+    const content=await page.getTextContent();
+    // group text fragments into visual rows by their y position, then read each row left to right
+    const rows=[];
+    content.items.forEach(item=>{
+      if(!item.str || !item.str.trim()) return;
+      const x=item.transform[4], y=item.transform[5];
+      let row=rows.find(r=>Math.abs(r.y-y)<=3);
+      if(!row){ row={y, parts:[]}; rows.push(row); }
+      row.parts.push({x, s:item.str});
+    });
+    rows.sort((a,b)=>b.y-a.y);
+    rows.forEach(r=>{
+      r.parts.sort((a,b)=>a.x-b.x);
+      const text=r.parts.map(p=>p.s).join(" ").replace(/\s+/g," ").trim();
+      if(text) lines.push(text);
+    });
+  }
+  return lines;
+}
+
+const MONTHS_SHORT=["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
+function amountsIn(line){
+  const re=/(?<![\d.,])(?:[£$€]\s?)?(\d{1,3}(?:,\d{3})+|\d+)\.(\d{2})(?![\d])(?!\s?%)/g;
+  return [...line.matchAll(re)].map(m=>parseFloat(m[1].replace(/,/g,"")+"."+m[2]));
+}
+function dateIn(line){
+  const ok=(y,m,d)=> y>=2000 && y<=2100 && m>=1 && m<=12 && d>=1 && d<=31;
+  const iso=(y,m,d)=>`${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+  let m=line.match(/\b(\d{4})-(\d{1,2})-(\d{1,2})\b/);
+  if(m && ok(+m[1],+m[2],+m[3])) return iso(+m[1],+m[2],+m[3]);
+  m=line.match(/\b(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})\b/);
+  if(m){ const y=m[3].length===2?2000+ +m[3]:+m[3]; if(ok(y,+m[2],+m[1])) return iso(y,+m[2],+m[1]); }
+  m=line.match(/\b(\d{1,2})(?:st|nd|rd|th)?[\s\-]+([A-Za-z]{3,9})\.?,?[\s\-]+(\d{4}|\d{2})\b/);
+  if(m){ const mi=MONTHS_SHORT.indexOf(m[2].slice(0,3).toLowerCase()); const y=m[3].length===2?2000+ +m[3]:+m[3]; if(mi>=0 && ok(y,mi+1,+m[1])) return iso(y,mi+1,+m[1]); }
+  m=line.match(/\b([A-Za-z]{3,9})\.?\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})\b/);
+  if(m){ const mi=MONTHS_SHORT.indexOf(m[1].slice(0,3).toLowerCase()); if(mi>=0 && ok(+m[3],mi+1,+m[2])) return iso(+m[3],mi+1,+m[2]); }
+  return null;
+}
+
+const CATEGORY_HINTS=[
+  [["motor"],/\b(shell|esso|texaco|bp|jet|gulf|fuel|diesel|unleaded|petrol|tyres?|kwik ?fit|halfords|mot test)\b/],
+  [["tools-equipment","repairs"],/\b(screwfix|toolstation|makita|dewalt|milwaukee|festool|power tools?)\b/],
+  [["cost-of-sales","repairs"],/\b(travis perkins|jewson|wickes|b&q|selco|buildbase|howdens|city plumbing|timber|plasterboard|materials)\b/],
+  [["telephone-internet"],/\b(vodafone|o2|three|ee limited|bt group|british telecom|sky broadband|virgin media|plusnet|giffgaff|broadband|mobile phone)\b/],
+  [["it-software"],/\b(microsoft|google workspace|adobe|xero|quickbooks|freeagent|dropbox|squarespace|wix|godaddy|domain|software)\b/],
+  [["insurance"],/\b(insurance|insurer|aviva|axa|hiscox|simply business|policy number)\b/],
+  [["advertising"],/\b(facebook ads|meta platforms|google ads|checkatrade|mybuilder|rated people|trustatrader|vistaprint|advertis\w*)\b/],
+  [["travel-subsistence"],/\b(trainline|national rail|avanti|lner|uber|parking|ncp|hotel|premier inn|travelodge)\b/],
+  [["postage-stationery"],/\b(royal mail|post office|parcelforce|stamps|stationery)\b/],
+  [["legal-professional"],/\b(accountan\w*|solicitors?|bookkeep\w*)\b/],
+  [["bank-charges"],/\b(sumup|zettle|stripe fees|merchant fees?|card processing)\b/],
+  [["training"],/\b(training course|course fee|cscs|citb)\b/],
+  [["premises"],/\b(electricity|gas supply|business rates|octopus energy|british gas|edf|e\.on)\b/],
+  [["subscriptions"],/\b(membership|subscription)\b/],
+];
+
+// Pure parser: takes the PDF's text rows (top to bottom) and returns best guesses.
+function parseInvoiceLines(lines){
+  const text=lines.join("\n");
+  if(text.replace(/\s/g,"").length<20) return {scanned:true, amount:null, date:null, vendor:""};
+
+  // Total: largest amount on any "total"-style line that isn't a subtotal / VAT / net line
+  const totalRe=/(grand\s*total|total\s*(due|payable|to\s*pay|paid|amount|gbp|inc|incl|including)|(amount|balance)\s*(due|payable|paid|owing|to\s*pay)|invoice\s*total|order\s*total|\btotal\b)/i;
+  const notTotalRe=/(sub\s*-?\s*total|total\s*(vat|tax|net|ex\b|excl|excluding|before|items?|qty|quantity|discount|savings?)|(vat|tax|net)\s*total|total\s*weight)/i;
+  const totals=[];
+  lines.forEach((l,i)=>{
+    if(!totalRe.test(l) || notTotalRe.test(l)) return;
+    let nums=amountsIn(l);
+    if(!nums.length && lines[i+1]) nums=amountsIn(lines[i+1]).slice(0,1);
+    if(nums.length) totals.push(nums[nums.length-1]);
+  });
+  let amount=totals.filter(n=>n>0).length ? Math.max(...totals.filter(n=>n>0)) : null;
+  if(amount==null){
+    const cur=[...text.matchAll(/[£$€]\s?(\d{1,3}(?:,\d{3})+|\d+)\.(\d{2})(?!\d)/g)].map(m=>parseFloat(m[1].replace(/,/g,"")+"."+m[2]));
+    if(cur.length) amount=Math.max(...cur);
+  }
+
+  // VAT and net
+  let vat=null, net=null;
+  const vatCands=[];
+  lines.forEach(l=>{
+    if(/\b(vat|tax)\b/i.test(l) && !/\b(vat|tax)\s*(reg\w*|no\.?|number|id|code)\b/i.test(l) && !/sub\s*-?\s*total|total\s*(inc|incl|including)|grand\s*total|excl|excluding/i.test(l)){
+      const nums=amountsIn(l);
+      if(nums.length) vatCands.push(nums[nums.length-1]);
+    }
+    if(net==null && /(sub\s*-?\s*total|net\s*(total|amount|value)|total\s*(ex\b|excl|excluding|before|net))/i.test(l)){
+      const nums=amountsIn(l);
+      if(nums.length) net=nums[nums.length-1];
+    }
+  });
+  if(amount!=null && vatCands.length){
+    const fits=v=>[0.2,0.05].some(r=>Math.abs(v-amount*r/(1+r))<=Math.max(0.03,amount*0.002));
+    vat=vatCands.find(fits);
+    if(vat==null) vat=vatCands.find(v=>v===0) ?? vatCands.filter(v=>v<amount/2).sort((a,b)=>b-a)[0] ?? null;
+  }
+  if(vat==null && net!=null && amount!=null && amount>net) vat=Math.round((amount-net)*100)/100;
+  let vatRate=null;
+  if(vat===0) vatRate=0;
+  else if(vat!=null && amount!=null && amount>vat){
+    const r=vat/(amount-vat)*100;
+    if(Math.abs(r-20)<=1.5) vatRate=20; else if(Math.abs(r-5)<=1) vatRate=5;
+  }
+
+  // Date: prefer a labelled invoice/receipt date, skip due dates
+  let date=null;
+  const labelled=lines.filter(l=>/(invoice|issue|receipt|order|transaction|tax\s*point)\s*date|date\s*(of\s*issue|issued)|^date\b|\bdate\s*:/i.test(l) && !/\bdue\b/i.test(l));
+  for(const l of labelled){ date=dateIn(l); if(date) break; }
+  if(!date){ for(const l of lines){ if(/\bdue\b/i.test(l)) continue; date=dateIn(l); if(date) break; } }
+
+  // Invoice number
+  let numMatch=null;
+  for(const l of lines){ numMatch=l.match(/\b(invoice|receipt|order|inv)[ \t]*(no\.?|number|#|ref\w*)[ \t]*[:#.]?[ \t]*([A-Z]{0,5}[-\/]?\d[A-Z0-9\-\/]*)/i); if(numMatch) break; }
+  const invoiceNo=numMatch?numMatch[3]:"";
+
+  // Who is it from, and is it one of yours?
+  const skipRe=/^(tax\s*)?(invoice|receipt|statement|credit note|page\b|date\b|bill\s*to|invoice\s*to|sold\s*to|ship\s*to|deliver)|@|www\.|https?:|^\+?[\d\s()-]{7,}$|^\d/i;
+  const billIdx=lines.findIndex(l=>/\b(bill(ed)?\s*to|invoice\s*to|sold\s*to|customer)\b/i.test(l));
+  const header=(billIdx>0?lines.slice(0,billIdx):lines.slice(0,8)).join(" ").toLowerCase();
+  const myNames=[SETTINGS.companyName].filter(n=>n && n.trim().length>=3).map(n=>n.toLowerCase());
+  const isMine=myNames.some(n=>header.includes(n));
+  let vendor="";
+  if(isMine && billIdx>=0){
+    const after=lines[billIdx].replace(/.*\b(bill(ed)?\s*to|invoice\s*to|sold\s*to|customer)\b\s*:?\s*/i,"").trim();
+    vendor=(after && !skipRe.test(after)) ? after : (lines.slice(billIdx+1).find(l=>!skipRe.test(l))||"");
+  } else {
+    vendor=lines.slice(0,12).find(l=>l.length>=3 && !skipRe.test(l) && !totalRe.test(l) && !myNames.some(n=>l.toLowerCase().includes(n)))||"";
+  }
+  vendor=vendor.slice(0,60);
+
+  let category=null;
+  const type=isMine?"income":"expense";
+  if(type==="income") category="sales";
+  else { const low=text.toLowerCase(); for(const [ids,re] of CATEGORY_HINTS){ if(!re.test(low)) continue; const id=ids.find(x=>CATEGORIES.some(c=>c.id===x)); if(id){ category=id; break; } } }
+
+  return {scanned:false, amount, date, vendor, vat, net, vatRate, invoiceNo, type, category};
+}
+
+async function extractInvoiceDataFromPDF(file){
+  if(!window.pdfjsLib) return {amount:null, date:null, vendor:"", failed:true};
+  return parseInvoiceLines(await pdfTextLines(file));
+}
+
+/* =========================================================
+   PDF IMPORT — drop a PDF anywhere, or tap "Scan PDF"
+========================================================= */
+function showToast(msg, isError){
+  const t=document.getElementById("toast");
+  if(!t) return;
+  t.textContent=msg;
+  t.classList.toggle("error", !!isError);
+  t.hidden=false;
+  clearTimeout(showToast._timer);
+  showToast._timer=setTimeout(()=>{ t.hidden=true; }, isError?5000:2500);
+}
+function isPdf(file){ return file && (file.type==="application/pdf" || /\.pdf$/i.test(file.name||"")); }
+let importBusy=false;
+function withTimeout(promise, ms){
+  return Promise.race([promise, new Promise((_,rej)=>setTimeout(()=>rej(new Error("timeout")), ms))]);
+}
+async function importReceiptFile(file, propertyId){
+  if(importBusy) return;
+  if(!isPdf(file)){ showToast("That isn't a PDF. Drop a PDF invoice or receipt.", true); return; }
+  importBusy=true;
+  try{
+    const t=document.getElementById("toast");
+    t.textContent="Reading "+file.name+"…"; t.classList.remove("error"); t.hidden=false; clearTimeout(showToast._timer);
+    let guess;
+    try{ guess=await withTimeout(extractInvoiceDataFromPDF(file), 15000); }
+    catch(e){ guess={amount:null,date:null,vendor:"",failed:true}; }
+    let attachmentId=uid("att"), attachmentName=file.name;
+    let attachmentHash=null;
+    try{ attachmentHash=await withTimeout(fileHash(file), 5000); }catch(e){}
+    try{ await withTimeout(saveAttachment(attachmentId, file), 8000); }
+    catch(e){ attachmentId=null; attachmentName=null; guess.notSaved=true; }
+    t.hidden=true;
+    openTxForm(null, propertyId||null, {attachmentId, attachmentName, attachmentHash, guess});
+  } finally {
+    importBusy=false;
+  }
+}
+/* =========================================================
+   SEVERAL PDFs AT ONCE — read them all, then review on one screen
+========================================================= */
+function importReceiptFiles(files, propertyId){
+  const all=[...files];
+  const pdfs=all.filter(isPdf);
+  const skipped=all.length-pdfs.length;
+  const skipMsg=()=>{ if(skipped) setTimeout(()=>showToast(skipped+" file"+(skipped===1?" wasn't a PDF and was":"s weren't PDFs and were")+" skipped"), 600); };
+  if(!pdfs.length){ showToast("That isn't a PDF. Drop PDF invoices or receipts.", true); return; }
+  if(pdfs.length===1){ importReceiptFile(pdfs[0], propertyId); skipMsg(); return; }
+  importBatch(pdfs, propertyId).then(skipMsg);
+}
+async function importBatch(pdfs, propertyId){
+  if(importBusy) return;
+  importBusy=true;
+  const t=document.getElementById("toast");
+  const items=[];
+  try{
+    for(let i=0;i<pdfs.length;i++){
+      const file=pdfs[i];
+      t.textContent=`Reading ${i+1} of ${pdfs.length}: ${file.name}…`; t.classList.remove("error"); t.hidden=false; clearTimeout(showToast._timer);
+      let guess;
+      try{ guess=await withTimeout(extractInvoiceDataFromPDF(file), 15000); }
+      catch(e){ guess={amount:null,date:null,vendor:"",failed:true}; }
+      let attachmentHash=null;
+      try{ attachmentHash=await withTimeout(fileHash(file), 5000); }catch(e){}
+      let attachmentId=uid("att");
+      try{ await withTimeout(saveAttachment(attachmentId, file), 8000); }
+      catch(e){ attachmentId=null; guess.notSaved=true; }
+      items.push({name:file.name, attachmentId, attachmentHash, guess});
+    }
+  } finally {
+    importBusy=false;
+  }
+  t.hidden=true;
+  openBatch(items, propertyId||null);
+}
+
+let batchItems=[], batchProperty=null;
+function openBatch(items, propertyId){
+  batchProperty=propertyId;
+  batchItems=items.map((it,i)=>{
+    const g=it.guess||{};
+    const dups=findDuplicates({attachmentHash:it.attachmentHash, attachmentName:it.name, amount:g.amount, date:g.date, type:g.type}, null)
+      .map(d=>`${escHTML(d.t.description||"Transaction")} (${money(d.t.amount)}, ${fmtDate(d.t.date)}): ${d.reason}`);
+    items.slice(0,i).forEach(prev=>{
+      if(it.attachmentHash && prev.attachmentHash===it.attachmentHash) dups.push(`the same file appears earlier in this batch (${escHTML(prev.name)})`);
+    });
+    return {...it, dups, include:dups.length===0};
+  });
+  pushView("batch", renderBatch);
+}
+function discardBatch(){
+  batchItems.forEach(it=>{ if(it.attachmentId) deleteAttachment(it.attachmentId); });
+  batchItems=[];
+  if(batchProperty) openPropertyDetail(batchProperty); else showTab(navReturn);
+}
+function batchCatOptions(type, selected){
+  return CATEGORIES.filter(c=>c.type===type).map(c=>`<option value="${c.id}" ${c.id===selected?"selected":""}>${escHTML(c.label)}</option>`).join("");
+}
+function batchSummary(g, notSaved){
+  let s;
+  if(g.scanned) s=`<span style="color:var(--danger);">No text found (looks like a scanned photo). Enter the details.</span>`;
+  else if(g.failed) s=`<span style="color:var(--danger);">Couldn't read this PDF. Enter the details.</span>`;
+  else {
+    const bits=[];
+    if(g.amount!=null) bits.push("Total "+money(g.amount)); else bits.push(`<span style="color:var(--danger);">No total found</span>`);
+    if(g.vat!=null) bits.push("VAT "+money(g.vat));
+    if(g.date) bits.push(fmtDate(g.date));
+    if(g.invoiceNo) bits.push("No. "+escHTML(g.invoiceNo));
+    if(g.type==="income") bits.push("your own invoice");
+    s="Read: "+bits.join(" · ");
+  }
+  return s+(notSaved?` · <span style="color:var(--warn);">file not kept on this device</span>`:"");
+}
+function renderBatch(){
+  const el=document.getElementById("view-batch");
+  const hasDrawings=CATEGORIES.some(c=>c.type==="drawings");
+  const count=()=>batchItems.filter(it=>it.include).length;
+  el.innerHTML=`
+    <div class="pagehead"><div><div class="eyebrow">${batchItems.length} PDFs read</div><h2>Review PDFs</h2></div></div>
+    <p class="note" style="margin:-8px 0 16px;">Check the details for each one and untick any you don't want. Possible duplicates start unticked.</p>
+    <div id="bList">${batchItems.map((it,i)=>{
+      const g=it.guess||{};
+      const type=g.type||"expense";
+      const vat=g.vatRate!=null?g.vatRate:20;
+      return `<div class="card batch-item ${it.include?"":"off"}" data-i="${i}">
+        <label class="batch-head">
+          <input type="checkbox" class="b-inc" ${it.include?"checked":""} aria-label="Include ${escAttr(it.name)}">
+          <div style="min-width:0;"><div class="batch-name">${ICONS.paperclip}${escHTML(it.name)}</div><div class="batch-sum">${batchSummary(g, it.guess&&it.guess.notSaved)}</div></div>
+        </label>
+        ${it.dups.length?`<div class="dup-warn" style="margin-bottom:10px;"><b>Possible duplicate:</b><ul>${it.dups.slice(0,3).map(d=>`<li>${d}</li>`).join("")}</ul></div>`:""}
+        <div class="field-row">
+          <div class="field"><label>Type</label><select class="b-type">
+            <option value="expense" ${type==="expense"?"selected":""}>Expense</option>
+            <option value="income" ${type==="income"?"selected":""}>Income</option>
+            ${hasDrawings?`<option value="drawings">Drawings</option>`:""}
+          </select></div>
+          <div class="field"><label>Amount (£)</label><input type="number" step="0.01" min="0" inputmode="decimal" class="b-amount" value="${g.amount!=null?g.amount:""}" placeholder="0.00">
+            <div class="b-err" style="font-size:12px; color:var(--danger); margin-top:5px;" hidden>Enter the amount</div></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Date</label><input type="date" class="b-date" value="${g.date||toISO(new Date())}"></div>
+          <div class="field"><label>Category</label><select class="b-cat">${batchCatOptions(type, g.category)}</select></div>
+        </div>
+        <div class="field"><label>Description</label><input type="text" class="b-desc" value="${escAttr([g.vendor,g.invoiceNo?"Inv "+g.invoiceNo:""].filter(Boolean).join(" · "))}" placeholder="What was this for?"></div>
+        ${SETTINGS.vatEnabled?`<div class="field" style="margin-bottom:0;"><label>VAT rate</label><select class="b-vat">
+          <option value="0" ${vat===0?"selected":""}>No VAT</option><option value="5" ${vat===5?"selected":""}>5%</option><option value="20" ${vat===20?"selected":""}>20%</option>
+        </select></div>`:""}
+      </div>`;
+    }).join("")}</div>
+    <button class="btn btn-accent btn-block" id="bAdd"></button>
+    <button class="btn btn-ghost btn-block" id="bCancel" style="margin-top:10px;">Cancel and discard these PDFs</button>
+  `;
+  const addBtn=el.querySelector("#bAdd");
+  const label=()=>{ const n=count(); addBtn.textContent=n?`Add ${n} transaction${n===1?"":"s"}`:"Tick at least one PDF"; addBtn.disabled=!n; };
+  label();
+  el.querySelectorAll(".batch-item").forEach(card=>{
+    const it=batchItems[+card.dataset.i];
+    card.querySelector(".b-inc").addEventListener("change",e=>{ it.include=e.target.checked; card.classList.toggle("off",!it.include); label(); });
+    card.querySelector(".b-type").addEventListener("change",e=>{ card.querySelector(".b-cat").innerHTML=batchCatOptions(e.target.value, it.guess&&it.guess.type===e.target.value?it.guess.category:null); });
+    card.querySelector(".b-amount").addEventListener("input",e=>{ card.querySelector(".b-err").hidden=true; e.target.style.borderColor=""; });
+  });
+  el.querySelector("#bCancel").addEventListener("click",discardBatch);
+  addBtn.addEventListener("click",()=>{
+    const cards=[...el.querySelectorAll(".batch-item")];
+    const toAdd=[]; let firstBad=null;
+    cards.forEach(card=>{
+      const it=batchItems[+card.dataset.i];
+      if(!it.include) return;
+      const amtIn=card.querySelector(".b-amount");
+      const amount=parseFloat(String(amtIn.value).replace(/[£,\s]/g,""));
+      if(!amount || amount<=0){ card.querySelector(".b-err").hidden=false; amtIn.style.borderColor="var(--danger)"; if(!firstBad) firstBad=amtIn; return; }
+      const type=card.querySelector(".b-type").value;
+      const vatSel=card.querySelector(".b-vat");
+      toAdd.push({id:uid("tx"), type, amount, date:card.querySelector(".b-date").value||toISO(new Date()), category:card.querySelector(".b-cat").value,
+        description:card.querySelector(".b-desc").value.trim(), vatRate:(vatSel&&type!=="drawings")?parseFloat(vatSel.value):0,
+        propertyId:batchProperty, attachmentId:it.attachmentId, attachmentName:it.attachmentId?it.name:null, attachmentHash:it.attachmentHash||null});
+    });
+    if(firstBad){ firstBad.scrollIntoView({block:"center", behavior:"smooth"}); firstBad.focus(); showToast("Some ticked PDFs still need an amount", true); return; }
+    if(!toAdd.length) return;
+    batchItems.forEach(it=>{ if(!it.include && it.attachmentId) deleteAttachment(it.attachmentId); });
+    toAdd.forEach(t=>TRANSACTIONS.push(t));
+    batchItems=[];
+    saveTransactions();
+    if(batchProperty) openPropertyDetail(batchProperty);
+    else { ledgerFilter="all"; ledgerSearch=""; ledgerFrom=""; ledgerTo=""; showTab("ledger"); }
+    showToast("Added "+toAdd.length+" transaction"+(toAdd.length===1?"":"s"));
+  });
+}
+function pickReceipt(propertyId){
+  const input=document.getElementById("receiptInput");
+  input.onchange=()=>{ const files=[...input.files]; input.value=""; if(files.length) importReceiptFiles(files, propertyId); };
+  input.click();
+}
+function wireGlobalDrop(){
+  const overlay=document.getElementById("dropOverlay");
+  let depth=0;
+  const hasFiles=e=>e.dataTransfer && [...(e.dataTransfer.types||[])].includes("Files");
+  document.addEventListener("dragenter",e=>{ if(!hasFiles(e)) return; e.preventDefault(); depth++; overlay.hidden=false; });
+  document.addEventListener("dragover",e=>{ if(!hasFiles(e)) return; e.preventDefault(); e.dataTransfer.dropEffect="copy"; });
+  document.addEventListener("dragleave",e=>{ if(!hasFiles(e)) return; depth=Math.max(0,depth-1); if(!depth) overlay.hidden=true; });
+  document.addEventListener("drop",e=>{
+    if(!hasFiles(e)) return;
+    e.preventDefault(); depth=0; overlay.hidden=true;
+    const files=[...e.dataTransfer.files];
+
+    const onProperty=document.getElementById("view-propertydetail").classList.contains("active") ? currentPropertyId : null;
+    importReceiptFiles(files, onProperty);
+  });
+}
+
+/* =========================================================
+   CLOUD SYNC (Claude "db" capability — syncs this ledger across
+   every device signed into the same Claude account)
+========================================================= */
+let cloudDoc=null;
+let cloudStatus="off"; // off | connecting | synced | local-only | error
+let lastAppliedAt=0;
+let cloudSyncTimer=null;
+
+function currentStateSnapshot(){
+  return {SETTINGS,CATEGORIES,TRANSACTIONS,INVOICES,CLIENTS,MILEAGE,PROPERTIES,TENANCIES,CERTIFICATES,LOANS,LOAN_REPAYMENTS};
+}
+function applyCloudData(data){
+  // Synced data arrives frozen (read-only); take an editable copy so new transactions etc. can be added
+  data=JSON.parse(JSON.stringify(data));
+  SETTINGS=data.SETTINGS||SETTINGS; saveJSON("ledger_settings_v1", SETTINGS);
+  CATEGORIES=data.CATEGORIES||CATEGORIES; saveJSON("ledger_categories_v1", CATEGORIES);
+  TRANSACTIONS=data.TRANSACTIONS||[]; saveJSON("ledger_transactions_v1", TRANSACTIONS);
+  INVOICES=data.INVOICES||[]; saveJSON("ledger_invoices_v1", INVOICES);
+  CLIENTS=data.CLIENTS||[]; saveJSON("ledger_clients_v1", CLIENTS);
+  MILEAGE=data.MILEAGE||[]; saveJSON("ledger_mileage_v1", MILEAGE);
+  PROPERTIES=data.PROPERTIES||[]; saveJSON("ledger_properties_v1", PROPERTIES);
+  TENANCIES=data.TENANCIES||[]; saveJSON("ledger_tenancies_v1", TENANCIES);
+  CERTIFICATES=data.CERTIFICATES||[]; saveJSON("ledger_certificates_v1", CERTIFICATES);
+  LOANS=data.LOANS||[]; saveJSON("ledger_loans_v1", LOANS);
+  LOAN_REPAYMENTS=data.LOAN_REPAYMENTS||[]; saveJSON("ledger_loan_repayments_v1", LOAN_REPAYMENTS);
+  const activeEl=document.querySelector(".view.active");
+  const id=activeEl?activeEl.id.replace("view-",""):"";
+  if(ROOT_VIEWS.includes(id)) showTab(currentTab);
+  else if(id==="propertydetail" && currentPropertyId) renderPropertyDetail(currentPropertyId);
+  else if(id==="loandetail" && currentLoanId) renderLoanDetail(currentLoanId);
+}
+async function pushCloudState(){
+  if(!cloudDoc) return;
+  const updatedAt=Date.now();
+  const payload=Object.assign({updatedAt}, currentStateSnapshot());
+  try{
+    await cloudDoc.set(payload);
+    lastAppliedAt=updatedAt;
+    cloudStatus="synced";
+  }catch(e){
+    cloudStatus="error";
+  }
+  renderSettingsSyncStatus();
+}
+function queueCloudSync(){
+  if(!cloudDoc) return;
+  clearTimeout(cloudSyncTimer);
+  cloudSyncTimer=setTimeout(pushCloudState, 700);
+}
+async function initCloudSync(){
+  if(!(window.claude && typeof window.claude.use==="function")){ cloudStatus="local-only"; return; }
+  cloudStatus="connecting";
+  let db;
+  try{ db=await window.claude.use("db"); }catch(e){ db=null; }
+  if(!db){ cloudStatus="local-only"; renderSettingsSyncStatus(); return; }
+  cloudDoc=db.doc("ledger/data");
+  cloudDoc.onSnapshot(snap=>{
+    if(snap.exists){
+      const data=snap.data();
+      if(data && typeof data.updatedAt==="number" && data.updatedAt>lastAppliedAt){
+        lastAppliedAt=data.updatedAt;
+        applyCloudData(data);
+      }
+      cloudStatus="synced";
+    } else {
+      pushCloudState();
+    }
+    renderSettingsSyncStatus();
+  }, ()=>{ cloudStatus="error"; renderSettingsSyncStatus(); });
+}
+function renderSettingsSyncStatus(){
+  const el=document.getElementById("syncStatusLine");
+  if(!el) return;
+  const LABEL={off:"Not started", connecting:"Connecting…", synced:"Synced across your devices", "local-only":"Saved in this browser only", error:"Sync error — data still saved on this device"};
+  el.textContent=LABEL[cloudStatus]||"";
+}
+
+function uid(prefix){ return (prefix||"id")+"_"+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+
+/* =========================================================
+   MONEY / DATE / TAX HELPERS
+========================================================= */
+function money(n){
+  const v = Math.round((n||0)*100)/100;
+  const neg = v<0;
+  const s = Math.abs(v).toLocaleString("en-GB",{minimumFractionDigits:2,maximumFractionDigits:2});
+  return (neg?"-£":"£")+s;
+}
+function toISO(d){ const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),dd=String(d.getDate()).padStart(2,"0"); return `${y}-${m}-${dd}`; }
+function fmtDate(iso){
+  if(!iso) return "";
+  const d=new Date(iso+"T00:00:00");
+  return d.toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"});
+}
+const MONTH_NAMES=["January","February","March","April","May","June","July","August","September","October","November","December"];
+function monthLabel(d){ return MONTH_NAMES[d.getMonth()]+" "+d.getFullYear(); }
+function startOfMonth(d){ return new Date(d.getFullYear(), d.getMonth(), 1); }
+function addMonths(d,n){ return new Date(d.getFullYear(), d.getMonth()+n, 1); }
+
+// UK tax year: 6 April - 5 April
+function taxYearStart(d){
+  const y = (d.getMonth()>3 || (d.getMonth()===3 && d.getDate()>=6)) ? d.getFullYear() : d.getFullYear()-1;
+  return new Date(y,3,6);
+}
+function taxYearLabel(d){
+  const s=taxYearStart(d);
+  return `${s.getFullYear()}/${String(s.getFullYear()+1).slice(2)}`;
+}
+// UK VAT quarters: simple calendar quarters (Jan-Mar, Apr-Jun, Jul-Sep, Oct-Dec)
+function quarterStart(d){ const q=Math.floor(d.getMonth()/3); return new Date(d.getFullYear(), q*3, 1); }
+function quarterEnd(d){ const s=quarterStart(d); return new Date(s.getFullYear(), s.getMonth()+3, 0); }
+function quarterLabel(d){ const q=Math.floor(d.getMonth()/3)+1; return `Q${q} ${d.getFullYear()}`; }
+
+function vatAmountFromGross(gross, ratePct){
+  if(!ratePct) return 0;
+  return gross - gross/(1+ratePct/100);
+}
+
+function reportHeaderHTML(title, metaLines){
+  return `<div class="invoice-head">
+    <div class="from"><b>${SETTINGS.companyName||"Your Company"}</b><span>${[SETTINGS.address,SETTINGS.email,SETTINGS.phone].filter(Boolean).join("\n")}${SETTINGS.vatNumber?"\nVAT No: "+SETTINGS.vatNumber:""}${SETTINGS.regNumber?"\nCompany No: "+SETTINGS.regNumber:""}</span></div>
+    <div class="meta"><div class="title">${title}</div>${metaLines.map(m=>`<div>${m}</div>`).join("")}</div>
+  </div>`;
+}
+
+/* =========================================================
+   MILEAGE RATE (HMRC AMAP)
+========================================================= */
+function mileageRateFor(vehicleType, milesBeforeThisTrip){
+  if(vehicleType==="motorcycle") return 24;
+  if(vehicleType==="bicycle") return 20;
+  return milesBeforeThisTrip < 10000 ? 45 : 25; // car
+}
+function recalcMileageAmounts(){
+  const byYear={};
+  const sorted=MILEAGE.slice().sort((a,b)=> a.date===b.date ? 0 : (a.date<b.date?-1:1));
+  sorted.forEach(m=>{
+    const ty=taxYearLabel(new Date(m.date+"T00:00:00"));
+    if(m.vehicleType==="car"){
+      byYear[ty]=byYear[ty]||0;
+      const rate=mileageRateFor("car", byYear[ty]);
+      m.rate=rate;
+      m.amount=Math.round(m.miles*rate)/100;
+      byYear[ty]+=m.miles;
+    } else {
+      const rate=mileageRateFor(m.vehicleType,0);
+      m.rate=rate;
+      m.amount=Math.round(m.miles*rate)/100;
+    }
+  });
+}
+
+/* =========================================================
+   PROPERTIES / TENANCIES / CERTIFICATES
+========================================================= */
+function propertyById(id){ return PROPERTIES.find(p=>p.id===id); }
+function propertyLabel(p){ return p.nickname ? p.nickname : p.address.split("\n")[0]; }
+function propertyTenancies(propertyId){
+  return TENANCIES.filter(t=>t.propertyId===propertyId).sort((a,b)=> a.startDate<b.startDate?-1:a.startDate>b.startDate?1:0);
+}
+function activeTenancy(propertyId){
+  const today=toISO(new Date());
+  const live=TENANCIES.filter(t=>t.propertyId===propertyId && t.startDate<=today && (!t.endDate||t.endDate>=today));
+  live.sort((a,b)=> b.startDate<a.startDate?-1:1);
+  return live[0]||null;
+}
+function monthlyRentFor(tenancy){
+  if(!tenancy) return 0;
+  return tenancy.rentFrequency==="weekly" ? tenancy.rentAmount*52/12 : tenancy.rentAmount;
+}
+function propertyTransactions(propertyId){ return TRANSACTIONS.filter(t=>t.propertyId===propertyId); }
+function propertyPL(propertyId, fromISO, toISOd){
+  const list=propertyTransactions(propertyId).filter(t=> (!fromISO||t.date>=fromISO) && (!toISOd||t.date<=toISOd));
+  const income=list.filter(t=>t.type==="income").reduce((s,t)=>s+t.amount,0);
+  const expense=list.filter(t=>t.type==="expense").reduce((s,t)=>s+t.amount,0);
+  return {income, expense, profit:income-expense};
+}
+function propertyCertificates(propertyId){
+  return CERTIFICATES.filter(c=>c.propertyId===propertyId).sort((a,b)=> a.expiryDate<b.expiryDate?-1:1);
+}
+const CERT_TYPES=[
+  {id:"gas", label:"Gas Safety Certificate", validMonths:12},
+  {id:"eicr", label:"EICR (Electrical Safety)", validMonths:60},
+  {id:"epc", label:"EPC (Energy Performance)", validMonths:120},
+  {id:"alarm", label:"Smoke & CO Alarms Check", validMonths:12},
+  {id:"other", label:"Other", validMonths:12},
+];
+function certTypeLabel(id){ const t=CERT_TYPES.find(c=>c.id===id); return t?t.label:"Certificate"; }
+function certStatus(cert){
+  const today=toISO(new Date());
+  if(cert.expiryDate<today) return "expired";
+  const days=(new Date(cert.expiryDate+"T00:00:00")-new Date(today+"T00:00:00"))/86400000;
+  if(days<=30) return "soon";
+  return "valid";
+}
+function propertyWorstCertStatus(propertyId){
+  const certs=propertyCertificates(propertyId);
+  if(certs.some(c=>certStatus(c)==="expired")) return "expired";
+  if(certs.some(c=>certStatus(c)==="soon")) return "soon";
+  return "valid";
+}
+function rentRollRows(){
+  const mStart=toISO(startOfMonth(new Date())), mEnd=toISO(addMonths(new Date(),1));
+  return PROPERTIES.map(p=>{
+    const tenancy=activeTenancy(p.id);
+    if(!tenancy) return {property:p, tenancy:null, expected:0, received:0, status:"void"};
+    const expected=monthlyRentFor(tenancy);
+    const received=TRANSACTIONS.filter(t=>t.propertyId===p.id && t.type==="income" && t.date>=mStart && t.date<mEnd).reduce((s,t)=>s+t.amount,0);
+    const status = received>=expected-0.01 ? "paid" : (received>0 ? "partial" : "due");
+    return {property:p, tenancy, expected, received, status};
+  });
+}
+
+/* =========================================================
+   SHELL / NAV
+========================================================= */
+const TABS=[
+  {key:"dashboard", label:"Home", icon:ICONS.home},
+  {key:"properties", label:"Properties", icon:ICONS.building},
+  {key:"ledger", label:"Ledger", icon:ICONS.book},
+  {key:"invoices", label:"Invoices", icon:ICONS.invoice},
+  {key:"more", label:"More", icon:ICONS.more},
+];
+let currentTab="dashboard";
+let navReturn="dashboard";
+
+function buildTabbar(){
+  const nav=document.getElementById("tabbar");
+  nav.innerHTML=TABS.map(t=>`<button class="tab" data-tab="${t.key}">${t.icon}<span class="lbl">${t.label}</span></button>`).join("");
+  nav.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>showTab(b.dataset.tab)));
+}
+const RENDERERS={};
+function showTab(key){
+  currentTab=key; navReturn=key;
+  document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+  document.getElementById("view-"+key).classList.add("active");
+  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active", t.dataset.tab===key));
+  if(RENDERERS[key]) RENDERERS[key]();
+  renderTopbar();
+  window.scrollTo(0,0);
+}
+function pushView(key, renderFn){
+  document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+  if(renderFn) renderFn();
+  document.getElementById("view-"+key).classList.add("active");
+  renderTopbar();
+  window.scrollTo(0,0);
+}
+const TOPBAR_TITLES={
+  txform:"Transaction", invoiceform:"Invoice", invoicedetail:"Invoice", mileage:"Mileage",
+  mileageform:"Log Trip", vat:"VAT Summary", clients:"Clients", clientform:"Client",
+  categories:"Categories", settings:"Company Settings", loans:"Loans", loandetail:"Loan",
+  loanform:"Loan", repayform:"Add Repayment", propertydetail:"Property", propertyform:"Property",
+  tenancyform:"Tenancy", certform:"Certificate", plreport:"Profit & Loss", archive:"Invoice Archive", batch:"Review PDFs"
+};
+const ROOT_VIEWS=["dashboard","properties","ledger","invoices","more"];
+function renderTopbar(){
+  const bar=document.getElementById("topbar");
+  const activeEl=document.querySelector(".view.active");
+  const id=activeEl?activeEl.id.replace("view-",""):"";
+  if(!ROOT_VIEWS.includes(id)){
+    bar.innerHTML=`<button class="backbtn" id="backBtn">${ICONS.back}</button><div class="brand"><b>${TOPBAR_TITLES[id]||""}</b></div>`;
+    document.getElementById("backBtn").addEventListener("click",()=>{
+      if(id==="mileageform") pushView("mileage", renderMileage);
+      else if(id==="invoicedetail"||id==="invoiceform") showTab("invoices");
+      else if(id==="clientform") pushView("clients", renderClients);
+      else if(id==="repayform") openLoanDetail(currentLoanId);
+      else if(id==="loanform" && currentLoanId) openLoanDetail(currentLoanId);
+      else if(id==="loanform"||id==="loandetail") pushView("loans", renderLoans);
+      else if(id==="txform" && txFormReturn) openPropertyDetail(txFormReturn);
+      else if(id==="tenancyform"||id==="certform") openPropertyDetail(currentPropertyId);
+      else if(id==="propertyform" && currentPropertyId) openPropertyDetail(currentPropertyId);
+      else if(id==="propertyform"||id==="propertydetail") pushView("properties", renderProperties);
+      else if(id==="batch") discardBatch();
+      else showTab(navReturn==="more"||["vat","clients","categories","settings","loans"].includes(navReturn)?"more":navReturn);
+    });
+  } else {
+    bar.innerHTML=`<div class="mark">£</div><div class="brand"><b>${SETTINGS.companyName||"Ledger"}</b><span>Bookkeeping</span></div>`;
+  }
+}
+
+/* =========================================================
+   DASHBOARD
+========================================================= */
+let dashMonthOffset=0;
+function renderDashboard(){
+  const el=document.getElementById("view-dashboard");
+  const base=addMonths(new Date(), dashMonthOffset);
+  const mStart=startOfMonth(base), mEnd=startOfMonth(addMonths(base,1));
+  const mStartISO=toISO(mStart), mEndISO=toISO(mEnd);
+  const monthTx=TRANSACTIONS.filter(t=> t.date>=mStartISO && t.date<mEndISO);
+  const income=monthTx.filter(t=>t.type==="income").reduce((s,t)=>s+t.amount,0);
+  const expense=monthTx.filter(t=>t.type==="expense").reduce((s,t)=>s+t.amount,0);
+  const profit=income-expense;
+
+  const unpaidInvoices=INVOICES.filter(i=>i.status==="sent"||i.status==="overdue");
+  const unpaidTotal=unpaidInvoices.reduce((s,i)=>s+invoiceTotal(i).total,0);
+
+  const certAlerts=CERTIFICATES.filter(c=>certStatus(c)!=="valid");
+  const rentDue=rentRollRows().filter(r=>r.status==="due"||r.status==="partial");
+
+  const recent=TRANSACTIONS.slice().sort((a,b)=> b.date<a.date?-1:b.date>a.date?1:0).slice(0,6);
+
+  el.innerHTML=`
+    <div class="pagehead">
+      <div>
+        <div class="eyebrow">Overview</div>
+        <h2>${monthLabel(base)}</h2>
+      </div>
+    </div>
+    <div class="weekbar">
+      <button class="iconbtn" id="dPrev">${ICONS.back}</button>
+      <div class="range">${dashMonthOffset===0?"This Month":""}</div>
+      <button class="iconbtn" id="dNext" ${dashMonthOffset>=0?'disabled style="opacity:.3"':""}>${ICONS.chev}</button>
+    </div>
+    <div class="stat-row">
+      <div class="stat-tile income"><b class="tabular">${money(income)}</b><span>Income</span></div>
+      <div class="stat-tile expense"><b class="tabular">${money(expense)}</b><span>Expenses</span></div>
+      <div class="stat-tile"><b class="tabular" style="color:${profit>=0?"var(--accent)":"var(--danger)"}">${money(profit)}</b><span>Profit</span></div>
+    </div>
+    ${rentDue.length?`<div class="card" style="padding:14px 16px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; cursor:pointer;" id="rentDueCard">
+      <div><b style="font-size:14px; color:var(--danger);">${rentDue.length} propert${rentDue.length===1?"y":"ies"} with rent due</b><div style="font-size:12px;color:var(--ink-soft);margin-top:2px;">This month's rent not fully received</div></div>
+      ${ICONS.chev}
+    </div>`:""}
+    ${certAlerts.length?`<div class="card" style="padding:14px 16px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; cursor:pointer;" id="certAlertCard">
+      <div><b style="font-size:14px; color:var(--danger);">${certAlerts.length} certificate${certAlerts.length===1?"":"s"} need${certAlerts.length===1?"s":""} attention</b><div style="font-size:12px;color:var(--ink-soft);margin-top:2px;">Expired or due within 30 days</div></div>
+      ${ICONS.chev}
+    </div>`:""}
+    ${unpaidInvoices.length?`<div class="card" style="padding:14px 16px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;" id="unpaidCard">
+      <div><b style="font-size:14px;">${unpaidInvoices.length} unpaid invoice${unpaidInvoices.length===1?"":"s"}</b><div style="font-size:12px;color:var(--ink-soft);margin-top:2px;">${money(unpaidTotal)} outstanding</div></div>
+      ${ICONS.chev}
+    </div>`:""}
+    <div class="section-label">Recent Activity</div>
+    <div id="dRecent"></div>
+    ${TRANSACTIONS.length>recent.length?`<button class="btn btn-ghost btn-block" id="dViewAll" style="margin-bottom:10px;">View all ${TRANSACTIONS.length} transactions</button>`:""}
+    <div style="display:flex; gap:10px; margin-top:6px;">
+      <button class="btn btn-ghost" style="flex:1;" id="dAddBtn">+ Add Transaction</button>
+      <button class="btn btn-ghost" style="flex:1;" id="dScanBtn">${ICONS.upload} Scan PDF</button>
+    </div>
+    <p class="note" style="text-align:center; margin-top:10px;">Tip: drag a PDF invoice or receipt anywhere onto the app to add it.</p>
+  `;
+  el.querySelector("#dPrev").addEventListener("click",()=>{ dashMonthOffset--; renderDashboard(); });
+  const nextBtn=el.querySelector("#dNext");
+  if(dashMonthOffset<0) nextBtn.addEventListener("click",()=>{ dashMonthOffset++; renderDashboard(); });
+  const uc=el.querySelector("#unpaidCard");
+  if(uc) uc.addEventListener("click",()=>showTab("invoices"));
+  const rc=el.querySelector("#rentDueCard");
+  if(rc) rc.addEventListener("click",()=>showTab("properties"));
+  const cc=el.querySelector("#certAlertCard");
+  if(cc) cc.addEventListener("click",()=>showTab("properties"));
+  el.querySelector("#dAddBtn").addEventListener("click",()=>openTxForm(null));
+  const viewAll=el.querySelector("#dViewAll");
+  if(viewAll) viewAll.addEventListener("click",()=>{ ledgerFilter="all"; ledgerSearch=""; ledgerFrom=""; ledgerTo=""; showTab("ledger"); });
+  el.querySelector("#dScanBtn").addEventListener("click",()=>pickReceipt());
+
+  const rec=el.querySelector("#dRecent");
+  if(recent.length===0){
+    rec.innerHTML=`<div class="empty">No transactions yet.</div>`;
+  } else {
+    rec.innerHTML=recent.map(txRowHTML).join("");
+    wireTxRows(rec);
+  }
+}
+
+function escHTML(v){ return String(v==null?"":v).replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch])); }
+function escAttr(v){ return escHTML(v); }
+async function fileHash(file){
+  if(!(window.crypto && crypto.subtle)) return null;
+  const buf=await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
+  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,"0")).join("");
+}
+// Existing transactions that look like the same thing: same PDF file, same file name, or same amount + date + type
+function findDuplicates(c, excludeId){
+  const same=(a,b)=>Math.abs((a||0)-(b||0))<0.005;
+  const out=[];
+  TRANSACTIONS.forEach(t=>{
+    if(t.id===excludeId) return;
+    let reason=null;
+    if(c.attachmentHash && t.attachmentHash && t.attachmentHash===c.attachmentHash) reason="the same PDF was already added";
+    else if(c.attachmentName && t.attachmentName && t.attachmentName.toLowerCase()===c.attachmentName.toLowerCase()) reason="a PDF with the same file name was already added";
+    else if(c.amount!=null && same(t.amount,c.amount) && t.date===c.date && (!c.type || t.type===c.type)) reason="same amount on the same date";
+    if(reason) out.push({t, reason});
+  });
+  return out;
+}
+function dupListHTML(dups){
+  return `<ul>${dups.slice(0,3).map(d=>`<li>${escHTML(d.t.description||"Transaction")}: ${money(d.t.amount)} on ${fmtDate(d.t.date)}${d.t.attachmentName?" ("+escHTML(d.t.attachmentName)+")":""}. Reason: ${d.reason}.</li>`).join("")}${dups.length>3?`<li>and ${dups.length-3} more</li>`:""}</ul>`;
+}
+// Quick date ranges shared by the Ledger and Invoices screens
+function periodRanges(){
+  const now=new Date();
+  const ty=taxYearStart(now);
+  const monthEnd=d=>new Date(d.getFullYear(), d.getMonth()+1, 0);
+  return [
+    {label:"All time", from:"", to:""},
+    {label:"This month", from:toISO(startOfMonth(now)), to:toISO(monthEnd(now))},
+    {label:"Last month", from:toISO(addMonths(now,-1)), to:toISO(monthEnd(addMonths(now,-1)))},
+    {label:"Last 3 months", from:toISO(addMonths(now,-2)), to:toISO(monthEnd(now))},
+    {label:"This tax year", from:toISO(ty), to:toISO(new Date(ty.getFullYear()+1,3,5))},
+    {label:"Last tax year", from:toISO(new Date(ty.getFullYear()-1,3,6)), to:toISO(new Date(ty.getFullYear(),3,5))},
+  ];
+}
+function periodChipsHTML(from,to){
+  return periodRanges().map(r=>`<button class="chip ${r.from===(from||"")&&r.to===(to||"")?"active":""}" data-from="${r.from}" data-to="${r.to}">${r.label}</button>`).join("");
+}
+function txRowHTML(t){
+  const c=catById(t.category);
+  const p=t.propertyId?propertyById(t.propertyId):null;
+  return `<div class="row" data-txid="${t.id}">
+    <span class="catdot" style="background:${c?c.color:"#999"}"></span>
+    <div class="mid"><b>${t.description||(c?c.label:"Transaction")}</b><span>${fmtDate(t.date)} · ${c?c.label:"Uncategorised"}${p?" · "+propertyLabel(p):""}</span>${t.attachmentName?`<span class="fname" title="${escAttr(t.attachmentName)}">${ICONS.paperclip}<em>${escHTML(t.attachmentName)}</em></span>`:""}</div>
+    ${t.attachmentId?`<span class="clip" title="Invoice attached">${ICONS.paperclip}</span>`:""}
+    <div class="amt ${t.type}">${t.type==="income"?"+":"−"}${money(Math.abs(t.amount))}</div>
+  </div>`;
+}
+function wireTxRows(container, returnPropertyId){
+  container.querySelectorAll("[data-txid]").forEach(row=>{
+    row.addEventListener("click",()=>{
+      const t=TRANSACTIONS.find(x=>x.id===row.dataset.txid);
+      if(t) openTxForm(t, returnPropertyId);
+    });
+  });
+}
+
+/* =========================================================
+   LEDGER
+========================================================= */
+let ledgerFilter="all", ledgerSearch="", ledgerFrom="", ledgerTo="";
+function renderLedger(){
+  const el=document.getElementById("view-ledger");
+  el.innerHTML=`
+    <div class="pagehead">
+      <div><div class="eyebrow">All Transactions</div><h2>Ledger</h2></div>
+      <div class="pagehead-actions">
+        <button class="ghostfab" id="lScanBtn" aria-label="Scan a PDF" title="Scan a PDF invoice or receipt">${ICONS.upload}</button>
+        <button class="fabbtn" id="lAddBtn" aria-label="Add transaction">${ICONS.plus}</button>
+      </div>
+    </div>
+    <div class="searchbar"><input type="search" id="lSearch" placeholder="Search description or category…" value="${ledgerSearch}"></div>
+    <div class="chiprow">
+      <button class="chip" data-f="all">All</button>
+      <button class="chip" data-f="income">Income</button>
+      <button class="chip" data-f="expense">Expenses</button>
+    </div>
+    <div class="chiprow" id="lPeriod">${periodChipsHTML(ledgerFrom,ledgerTo)}</div>
+    <div class="stat-row two" id="lTotals"></div>
+    <div class="section-label">Report</div>
+    <div class="field-row">
+      <div class="field"><label>From</label><input type="date" id="lFrom" value="${ledgerFrom}"></div>
+      <div class="field"><label>To</label><input type="date" id="lTo" value="${ledgerTo}"></div>
+    </div>
+    <button class="btn btn-ghost btn-block" id="lPrintBtn" style="margin-bottom:20px;">${ICONS.print} Print / Save PDF Report</button>
+    <div id="lList"></div>
+    <div class="invoice-sheet print-sheet" id="lPrintSheet"></div>
+  `;
+  el.querySelector("#lAddBtn").addEventListener("click",()=>openTxForm(null));
+  el.querySelector("#lScanBtn").addEventListener("click",()=>pickReceipt());
+  el.querySelectorAll("#lPeriod .chip").forEach(c=>c.addEventListener("click",()=>{ ledgerFrom=c.dataset.from; ledgerTo=c.dataset.to; renderLedger(); }));
+  el.querySelectorAll(".chip[data-f]").forEach(c=>{
+    c.classList.toggle("active", c.dataset.f===ledgerFilter);
+    c.addEventListener("click",()=>{ ledgerFilter=c.dataset.f; renderLedger(); });
+  });
+  el.querySelector("#lSearch").addEventListener("input",(e)=>{ ledgerSearch=e.target.value; renderList(); });
+  el.querySelector("#lFrom").addEventListener("change",(e)=>{ ledgerFrom=e.target.value; renderLedger(); });
+  el.querySelector("#lTo").addEventListener("change",(e)=>{ ledgerTo=e.target.value; renderLedger(); });
+  el.querySelector("#lPrintBtn").addEventListener("click",()=>window.print());
+
+  function filteredList(){
+    const q=ledgerSearch.toLowerCase();
+    let list=TRANSACTIONS.slice();
+    if(ledgerFilter!=="all") list=list.filter(t=>t.type===ledgerFilter);
+    if(ledgerFrom) list=list.filter(t=>t.date>=ledgerFrom);
+    if(ledgerTo) list=list.filter(t=>t.date<=ledgerTo);
+    if(q) list=list.filter(t=>{
+      const c=catById(t.category);
+      return (t.description||"").toLowerCase().includes(q) || (c&&c.label.toLowerCase().includes(q));
+    });
+    list.sort((a,b)=> b.date<a.date?-1:b.date>a.date?1:0);
+    return list;
+  }
+
+  function renderList(){
+    const list=filteredList();
+    const income=list.filter(t=>t.type==="income").reduce((s,t)=>s+t.amount,0);
+    const expense=list.filter(t=>t.type==="expense").reduce((s,t)=>s+t.amount,0);
+    el.querySelector("#lTotals").innerHTML=`
+      <div class="stat-tile income"><b class="tabular">${money(income)}</b><span>Income</span></div>
+      <div class="stat-tile expense"><b class="tabular">${money(expense)}</b><span>Expenses</span></div>
+    `;
+    const box=el.querySelector("#lList");
+    if(list.length===0){
+      box.innerHTML=`<div class="empty">No transactions match.<br><button class="btn btn-accent" id="lEmptyAdd">+ Add Transaction</button></div>`;
+      box.querySelector("#lEmptyAdd").addEventListener("click",()=>openTxForm(null));
+    } else {
+      box.innerHTML=list.map(txRowHTML).join("");
+      wireTxRows(box);
+    }
+
+    const rangeLabel = ledgerFrom||ledgerTo ? `${ledgerFrom?fmtDate(ledgerFrom):"Start"} – ${ledgerTo?fmtDate(ledgerTo):"Present"}` : "All dates";
+    const typeLabel = ledgerFilter==="all"?"Income & Expenses":ledgerFilter==="income"?"Income":"Expenses";
+    const sorted=list.slice().sort((a,b)=> a.date<b.date?-1:a.date>b.date?1:0);
+    el.querySelector("#lPrintSheet").innerHTML=`
+      ${reportHeaderHTML("Transaction Report", [rangeLabel, typeLabel])}
+      <table class="itable">
+        <thead><tr><th>Date</th><th>Description</th><th>Category</th><th class="num">Amount</th></tr></thead>
+        <tbody>${sorted.length?sorted.map(t=>{
+          const c=catById(t.category);
+          return `<tr><td>${fmtDate(t.date)}</td><td>${t.description||"—"}</td><td>${c?c.label:"Uncategorised"}</td><td class="num tabular">${t.type==="income"?"":"-"}${money(Math.abs(t.amount))}</td></tr>`;
+        }).join(""):`<tr><td colspan="4" style="color:var(--ink-soft);">No transactions in this range.</td></tr>`}</tbody>
+      </table>
+      <div class="itotals">
+        <div><span>Income</span><span class="tabular">${money(income)}</span></div>
+        <div><span>Expenses</span><span class="tabular">${money(expense)}</span></div>
+        <div class="grand"><span>Net Profit</span><span class="tabular">${money(income-expense)}</span></div>
+      </div>
+    `;
+  }
+  renderList();
+}
+
+/* =========================================================
+   TRANSACTION FORM
+========================================================= */
+let editingTxId=null;
+let txFormReturn=null;
+function openTxForm(tx, propertyId, pendingAttachment){
+  editingTxId=tx?tx.id:null;
+  txFormReturn=propertyId||null;
+  pushView("txform", ()=>renderTxForm(tx, propertyId, pendingAttachment));
+}
+function scanSummaryHTML(g){
+  return scanSummaryCore(g)+(g.notSaved?`<div class="scan-card warn">This browser wouldn't let the app keep a copy of the PDF, so the transaction will be saved without it attached.</div>`:"");
+}
+function scanSummaryCore(g){
+  if(g.scanned) return `<div class="scan-card warn"><b>No text found in this PDF.</b> It looks like a scanned photo, so the details can't be read automatically. The file is attached; enter the amount and date below.</div>`;
+  if(g.failed) return `<div class="scan-card warn"><b>Couldn't read this PDF.</b> The file is attached; enter the details below.</div>`;
+  const bits=[];
+  if(g.amount!=null) bits.push(`Total <b class="tabular">${money(g.amount)}</b>`);
+  if(g.vat!=null) bits.push(`VAT <b class="tabular">${money(g.vat)}</b>${g.vatRate!=null?` (${g.vatRate}%)`:""}`);
+  if(g.date) bits.push(`Dated <b>${fmtDate(g.date)}</b>`);
+  if(g.invoiceNo) bits.push(`No. <b>${g.invoiceNo}</b>`);
+  const who=g.type==="income"?`This looks like one of your own invoices${g.vendor?" to <b>"+g.vendor+"</b>":""}, so it's set as income.`:(g.vendor?`From <b>${g.vendor}</b>.`:"");
+  if(g.amount==null) return `<div class="scan-card warn"><b>Couldn't find a total in this PDF.</b> ${bits.join(" · ")} ${who} Enter the amount below.</div>`;
+  return `<div class="scan-card"><b>Read from the PDF:</b> ${bits.join(" · ")}. ${who} Check the details before saving.</div>`;
+}
+function renderTxForm(tx, presetPropertyId, pendingAttachment){
+  const el=document.getElementById("view-txform");
+  const isEdit=!!tx;
+  const guess=pendingAttachment&&pendingAttachment.guess || {};
+  const type=tx?tx.type:(guess.type||"expense");
+  const guessVat=(!tx && guess.vatRate!=null) ? guess.vatRate : null;
+  const cats=CATEGORIES.filter(c=>c.type===type);
+  const selectedPropertyId = tx ? (tx.propertyId||"") : (presetPropertyId||"");
+  let attachmentId = isEdit ? (tx.attachmentId||null) : (pendingAttachment?pendingAttachment.attachmentId:null);
+  let attachmentName = isEdit ? (tx.attachmentName||null) : (pendingAttachment?pendingAttachment.attachmentName:null);
+  let attachmentHash = isEdit ? (tx.attachmentHash||null) : (pendingAttachment?pendingAttachment.attachmentHash||null:null);
+  const pdfDups = (!isEdit && pendingAttachment) ? findDuplicates({attachmentHash, attachmentName, amount:guess.amount, date:guess.date, type:guess.type}, null) : [];
+  let dupConfirmed=false;
+  el.innerHTML=`
+    <div class="formsheet">
+      <div class="segrow" id="txTypeSeg">
+        <button class="seg" data-t="expense">Expense</button>
+        <button class="seg" data-t="income">Income</button>
+      </div>
+      <div id="attachBox"></div>
+      ${pendingAttachment?scanSummaryHTML(guess):""}
+      ${!isEdit&&!pendingAttachment?`<button type="button" class="btn btn-ghost btn-block" id="fScanPdf" style="margin-bottom:16px;">${ICONS.upload} Fill in from a PDF</button>`:""}
+      <div class="field"><label for="fAmount">Amount (£)</label><input type="number" step="0.01" min="0" inputmode="decimal" id="fAmount" value="${isEdit?tx.amount:(guess.amount!=null?guess.amount:"")}" placeholder="0.00">
+        <div id="fAmountErr" style="font-size:12.5px; color:var(--danger); margin-top:6px;" hidden>Enter the amount before adding the transaction.</div>
+      </div>
+      <div class="field"><label>Date</label><input type="date" id="fDate" value="${isEdit?tx.date:(guess.date||toISO(new Date()))}"></div>
+      <div class="field"><label>Category</label><select id="fCategory"></select></div>
+      <div class="field"><label>Description</label><input type="text" id="fDesc" value="${isEdit?(tx.description||""):[guess.vendor,guess.invoiceNo?"Inv "+guess.invoiceNo:""].filter(Boolean).join(" · ")}" placeholder="What was this for?"></div>
+      ${PROPERTIES.length?`<div class="field"><label>Property</label><select id="fProperty">
+        <option value="">No property (general)</option>
+        ${PROPERTIES.map(p=>`<option value="${p.id}" ${selectedPropertyId===p.id?"selected":""}>${propertyLabel(p)}</option>`).join("")}
+      </select></div>`:""}
+      ${SETTINGS.vatEnabled?`<div class="field"><label>VAT rate</label><select id="fVat">
+        <option value="0" ${(tx&&tx.vatRate===0)||guessVat===0?"selected":""}>No VAT</option>
+        <option value="5" ${(tx&&tx.vatRate===5)||guessVat===5?"selected":""}>5% (reduced)</option>
+        <option value="20" ${(!tx&&(guessVat===null||guessVat===20))||(tx&&tx.vatRate===20)?"selected":""}>20% (standard)</option>
+      </select></div>`:""}
+      <div class="dup-warn" id="fDupWarn" hidden></div>
+      <button class="btn btn-accent btn-block" id="fSave">${isEdit?"Save Changes":"Add Transaction"}</button>
+      ${isEdit?`<button class="btn btn-danger btn-block" id="fDelete" style="margin-top:10px;">Delete</button>`:""}
+    </div>
+  `;
+  function renderAttachBox(){
+    const box=el.querySelector("#attachBox");
+    if(!attachmentId){ box.innerHTML=""; return; }
+    box.innerHTML=`<div class="attach-card">
+      <span class="name">${ICONS.paperclip}${attachmentName||"invoice.pdf"}</span>
+      <div class="attach-actions">
+        <button type="button" class="btn btn-ghost btn-sm" id="fViewAttach">View</button>
+        <button type="button" class="btn btn-ghost btn-sm" id="fRemoveAttach">Remove</button>
+      </div>
+    </div>`;
+    box.querySelector("#fViewAttach").addEventListener("click",()=>openAttachment(attachmentId));
+    box.querySelector("#fRemoveAttach").addEventListener("click",()=>{
+      deleteAttachment(attachmentId);
+      attachmentId=null; attachmentName=null; attachmentHash=null;
+      renderAttachBox();
+    });
+  }
+  renderAttachBox();
+  const scanPdfBtn=el.querySelector("#fScanPdf");
+  if(scanPdfBtn) scanPdfBtn.addEventListener("click",()=>pickReceipt(presetPropertyId));
+
+  function populateCategories(t){
+    const sel=el.querySelector("#fCategory");
+    const list=CATEGORIES.filter(c=>c.type===t);
+    const want=tx?tx.category:(t===guess.type?guess.category:null);
+    sel.innerHTML=list.map(c=>`<option value="${c.id}" ${want===c.id?"selected":""}>${c.label}</option>`).join("");
+  }
+  let curType=type;
+  el.querySelectorAll("#txTypeSeg .seg").forEach(b=>{
+    b.classList.toggle("active", b.dataset.t===curType);
+    b.addEventListener("click",()=>{ curType=b.dataset.t; el.querySelectorAll("#txTypeSeg .seg").forEach(x=>x.classList.toggle("active",x===b)); populateCategories(curType); });
+  });
+  populateCategories(curType);
+
+  el.querySelector("#fAmount").addEventListener("input",()=>{ el.querySelector("#fAmountErr").hidden=true; el.querySelector("#fAmount").style.borderColor=""; });
+  const dupWarn=el.querySelector("#fDupWarn");
+  const saveBtn=el.querySelector("#fSave");
+  function showDupWarning(dups, atTop){
+    dupWarn.innerHTML=`<b>This might be a duplicate.</b> You already have:${dupListHTML(dups)}${atTop?"":"Click <b>Add anyway</b> to add it again, or go back to cancel."}`;
+    dupWarn.hidden=false;
+    if(!atTop){ saveBtn.textContent="Add anyway"; dupWarn.scrollIntoView({block:"center", behavior:"smooth"}); }
+  }
+  if(pdfDups.length){
+    const top=document.createElement("div");
+    top.className="dup-warn";
+    top.innerHTML=`<b>You may have added this already.</b>${dupListHTML(pdfDups)}`;
+    el.querySelector("#attachBox").after(top);
+    showToast("Possible duplicate: check before adding", true);
+  }
+  el.querySelectorAll("#fAmount,#fDate,#txTypeSeg .seg").forEach(x=>x.addEventListener(x.tagName==="BUTTON"?"click":"input",()=>{
+    if(dupConfirmed || !dupWarn.hidden){ dupConfirmed=false; dupWarn.hidden=true; saveBtn.textContent=isEdit?"Save Changes":"Add Transaction"; }
+  }));
+  function afterSave(){
+    saveTransactions();
+    if(txFormReturn) openPropertyDetail(txFormReturn); else showTab(navReturn);
+  }
+  el.querySelector("#fSave").addEventListener("click",()=>{
+    const amountInput=el.querySelector("#fAmount");
+    const amount=parseFloat(String(amountInput.value).replace(/[£,\s]/g,""));
+    const amountErr=el.querySelector("#fAmountErr");
+    if(!amount || amount<=0){
+      amountErr.hidden=false;
+      amountInput.style.borderColor="var(--danger)";
+      amountInput.scrollIntoView({block:"center", behavior:"smooth"});
+      amountInput.focus();
+      return;
+    }
+    const date=el.querySelector("#fDate").value || toISO(new Date());
+    const category=el.querySelector("#fCategory").value;
+    const description=el.querySelector("#fDesc").value.trim();
+    const vatRate=SETTINGS.vatEnabled ? parseFloat(el.querySelector("#fVat").value) : 0;
+    const propSel=el.querySelector("#fProperty");
+    const propertyId=propSel ? (propSel.value||null) : null;
+    if(!isEdit && !dupConfirmed){
+      const dups=findDuplicates({attachmentHash, attachmentName, amount, date, type:curType}, null);
+      if(dups.length){ dupConfirmed=true; showDupWarning(dups, false); return; }
+    }
+    if(isEdit){
+      Object.assign(tx, {type:curType, amount, date, category, description, vatRate, propertyId, attachmentId, attachmentName, attachmentHash});
+    } else {
+      TRANSACTIONS.push({id:uid("tx"), type:curType, amount, date, category, description, vatRate, propertyId, attachmentId, attachmentName, attachmentHash});
+    }
+    afterSave();
+    showToast(isEdit?"Changes saved":"Transaction added: "+money(amount));
+  });
+  const delBtn=el.querySelector("#fDelete");
+  if(delBtn) delBtn.addEventListener("click",()=>{
+    if(tx.attachmentId) deleteAttachment(tx.attachmentId);
+    TRANSACTIONS=TRANSACTIONS.filter(t=>t.id!==tx.id);
+    afterSave();
+  });
+}
+
+/* =========================================================
+   INVOICES
+========================================================= */
+function invoiceTotal(inv){
+  let subtotal=0, vat=0;
+  (inv.lineItems||[]).forEach(li=>{
+    const line=(li.qty||0)*(li.unitPrice||0);
+    subtotal+=line;
+    vat+=line*(li.vatRate||0)/100;
+  });
+  return {subtotal, vat, total:subtotal+vat};
+}
+function invoiceStatusComputed(inv){
+  if(inv.status==="paid") return "paid";
+  if(inv.status==="draft") return "draft";
+  if(inv.dueDate && inv.dueDate < toISO(new Date())) return "overdue";
+  return "sent";
+}
+let invFrom="", invTo="";
+function renderInvoices(){
+  const el=document.getElementById("view-invoices");
+  const inRange=i=>(!invFrom||i.issueDate>=invFrom) && (!invTo||i.issueDate<=invTo);
+  const list=INVOICES.filter(inRange).sort((a,b)=> b.issueDate<a.issueDate?-1:b.issueDate>a.issueDate?1:0);
+  const totals=list.reduce((acc,i)=>{
+    const t=invoiceTotal(i).total, st=invoiceStatusComputed(i);
+    if(st!=="draft") acc.all+=t;
+    if(st==="paid") acc.paid+=t;
+    if(st==="sent"||st==="overdue") acc.out+=t;
+    return acc;
+  },{all:0,paid:0,out:0});
+  const filtered=!!(invFrom||invTo);
+  el.innerHTML=`
+    <div class="pagehead">
+      <div><div class="eyebrow">${filtered?`${list.length} of ${INVOICES.length}`:INVOICES.length} Invoice${INVOICES.length===1?"":"s"}</div><h2>Invoices</h2></div>
+      <button class="fabbtn" id="iAddBtn" aria-label="New invoice">${ICONS.plus}</button>
+    </div>
+    ${INVOICES.length?`
+    <div class="chiprow" id="iPeriod">${periodChipsHTML(invFrom,invTo)}</div>
+    <div class="field-row">
+      <div class="field"><label for="iFrom">Issued from</label><input type="date" id="iFrom" value="${invFrom}"></div>
+      <div class="field"><label for="iTo">Issued to</label><input type="date" id="iTo" value="${invTo}"></div>
+    </div>
+    <div class="stat-row">
+      <div class="stat-tile"><b class="tabular">${money(totals.all)}</b><span>Invoiced</span></div>
+      <div class="stat-tile income"><b class="tabular">${money(totals.paid)}</b><span>Paid</span></div>
+      <div class="stat-tile ${totals.out>0?"expense":""}"><b class="tabular">${money(totals.out)}</b><span>Outstanding</span></div>
+    </div>`:""}
+    <div id="iList"></div>
+  `;
+  el.querySelector("#iAddBtn").addEventListener("click",()=>openInvoiceForm(null));
+  el.querySelectorAll("#iPeriod .chip").forEach(c=>c.addEventListener("click",()=>{ invFrom=c.dataset.from; invTo=c.dataset.to; renderInvoices(); }));
+  const fromIn=el.querySelector("#iFrom"), toIn=el.querySelector("#iTo");
+  if(fromIn) fromIn.addEventListener("change",e=>{ invFrom=e.target.value; renderInvoices(); });
+  if(toIn) toIn.addEventListener("change",e=>{ invTo=e.target.value; renderInvoices(); });
+  const box=el.querySelector("#iList");
+  if(INVOICES.length===0){
+    box.innerHTML=`<div class="empty">No invoices yet.<br><button class="btn btn-accent" id="iEmptyAdd">+ New Invoice</button></div>`;
+    box.querySelector("#iEmptyAdd").addEventListener("click",()=>openInvoiceForm(null));
+    return;
+  }
+  if(list.length===0){
+    box.innerHTML=`<div class="empty">No invoices issued in this period.<br><button class="btn btn-ghost" id="iShowAll">Show all invoices</button></div>`;
+    box.querySelector("#iShowAll").addEventListener("click",()=>{ invFrom=""; invTo=""; renderInvoices(); });
+    return;
+  }
+  box.innerHTML=list.map(inv=>{
+    const client=CLIENTS.find(c=>c.id===inv.clientId);
+    const status=invoiceStatusComputed(inv);
+    const {total}=invoiceTotal(inv);
+    return `<div class="row" data-invid="${inv.id}">
+      <div class="mid"><b>${SETTINGS.invoicePrefix}${String(inv.number).padStart(4,"0")} · ${client?escHTML(client.name):"No client"}</b><span>Issued ${fmtDate(inv.issueDate)}${inv.dueDate?" · Due "+fmtDate(inv.dueDate):""}${status==="paid"&&inv.paidDate?" · Paid "+fmtDate(inv.paidDate):""} <span class="badge ${status}" style="margin-left:6px;">${status}</span></span></div>
+      <div class="amt income tabular">${money(total)}</div>
+    </div>`;
+  }).join("");
+  box.querySelectorAll("[data-invid]").forEach(row=>{
+    row.addEventListener("click",()=>openInvoiceDetail(INVOICES.find(i=>i.id===row.dataset.invid)));
+  });
+}
+
+function openInvoiceDetail(inv){
+  pushView("invoicedetail", ()=>renderInvoiceDetail(inv));
+}
+function renderInvoiceDetail(inv){
+  const el=document.getElementById("view-invoicedetail");
+  const client=CLIENTS.find(c=>c.id===inv.clientId);
+  const {subtotal,vat,total}=invoiceTotal(inv);
+  const status=invoiceStatusComputed(inv);
+  el.innerHTML=`
+    <div class="invoice-sheet">
+      <div class="invoice-head">
+        <div class="from"><b>${SETTINGS.companyName||"Your Company"}</b><span>${[SETTINGS.address,SETTINGS.email,SETTINGS.phone].filter(Boolean).join("\n")}${SETTINGS.vatNumber?"\nVAT No: "+SETTINGS.vatNumber:""}${SETTINGS.regNumber?"\nCompany No: "+SETTINGS.regNumber:""}</span></div>
+        <div class="meta"><div class="title">Invoice</div><div>${SETTINGS.invoicePrefix}${String(inv.number).padStart(4,"0")}</div><div>Issued ${fmtDate(inv.issueDate)}</div><div>Due ${fmtDate(inv.dueDate)}</div></div>
+      </div>
+      <div class="invoice-to"><div class="lbl">Bill To</div><b>${client?client.name:"—"}</b><span>${client?[client.email,client.address].filter(Boolean).join("\n"):""}</span></div>
+      <table class="itable">
+        <thead><tr><th>Description</th><th class="num">Qty</th><th class="num">Unit Price</th>${SETTINGS.vatEnabled?'<th class="num">VAT</th>':""}<th class="num">Amount</th></tr></thead>
+        <tbody>${(inv.lineItems||[]).map(li=>`<tr><td>${li.description}</td><td class="num tabular">${li.qty}</td><td class="num tabular">${money(li.unitPrice)}</td>${SETTINGS.vatEnabled?`<td class="num tabular">${li.vatRate}%</td>`:""}<td class="num tabular">${money(li.qty*li.unitPrice)}</td></tr>`).join("")}</tbody>
+      </table>
+      <div class="itotals">
+        <div><span>Subtotal</span><span class="tabular">${money(subtotal)}</span></div>
+        ${SETTINGS.vatEnabled?`<div><span>VAT</span><span class="tabular">${money(vat)}</span></div>`:""}
+        <div class="grand"><span>Total</span><span class="tabular">${money(total)}</span></div>
+      </div>
+      ${inv.notes?`<div class="invoice-notes">${inv.notes}</div>`:""}
+    </div>
+    <div style="display:flex; gap:10px; margin-bottom:10px;">
+      <span class="badge ${status}" style="padding:8px 14px; font-size:12px;">${status}</span>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:10px;">
+      ${status!=="paid"?`<button class="btn btn-accent btn-block" id="markPaidBtn">Mark as Paid</button>`:""}
+      ${inv.status==="draft"?`<button class="btn btn-ghost btn-block" id="markSentBtn">Mark as Sent</button>`:""}
+      <button class="btn btn-ghost btn-block" id="printBtn">${ICONS.print} Print / Save PDF</button>
+      <button class="btn btn-ghost btn-block" id="editInvBtn">Edit Invoice</button>
+      <button class="btn btn-danger btn-block" id="delInvBtn">Delete Invoice</button>
+    </div>
+  `;
+  const paidBtn=el.querySelector("#markPaidBtn");
+  if(paidBtn) paidBtn.addEventListener("click",()=>{
+    inv.status="paid"; inv.paidDate=toISO(new Date());
+    if(!inv.linkedTransactionId){
+      const t={id:uid("tx"), type:"income", amount:total, date:inv.paidDate, category:"sales", description:`Invoice ${SETTINGS.invoicePrefix}${String(inv.number).padStart(4,"0")}${client?" — "+client.name:""}`, vatRate: subtotal>0?Math.round((vat/subtotal)*100):0};
+      TRANSACTIONS.push(t);
+      inv.linkedTransactionId=t.id;
+      saveTransactions();
+    }
+    saveInvoices();
+    renderInvoiceDetail(inv);
+  });
+  const sentBtn=el.querySelector("#markSentBtn");
+  if(sentBtn) sentBtn.addEventListener("click",()=>{ inv.status="sent"; saveInvoices(); renderInvoiceDetail(inv); });
+  el.querySelector("#printBtn").addEventListener("click",()=>window.print());
+  el.querySelector("#editInvBtn").addEventListener("click",()=>openInvoiceForm(inv));
+  el.querySelector("#delInvBtn").addEventListener("click",()=>{
+    if(inv.linkedTransactionId){ TRANSACTIONS=TRANSACTIONS.filter(t=>t.id!==inv.linkedTransactionId); saveTransactions(); }
+    INVOICES=INVOICES.filter(i=>i.id!==inv.id);
+    saveInvoices();
+    showTab("invoices");
+  });
+}
+
+function openInvoiceForm(inv){
+  pushView("invoiceform", ()=>renderInvoiceForm(inv));
+}
+function renderInvoiceForm(inv){
+  const el=document.getElementById("view-invoiceform");
+  const isEdit=!!inv;
+  let lineItems=inv? inv.lineItems.map(x=>({...x})) : [{description:"",qty:1,unitPrice:0,vatRate:SETTINGS.defaultVatRate}];
+
+  function draw(){
+    el.innerHTML=`
+      <div class="formsheet">
+        <div class="field"><label>Client</label>
+          <select id="fClient">
+            <option value="">Select a client…</option>
+            ${CLIENTS.map(c=>`<option value="${c.id}" ${inv&&inv.clientId===c.id?"selected":""}>${c.name}</option>`).join("")}
+          </select>
+        </div>
+        <button class="btn btn-ghost btn-sm" id="newClientBtn" style="margin-bottom:16px;">+ New client</button>
+        <div class="field-row">
+          <div class="field"><label>Issue date</label><input type="date" id="fIssue" value="${inv?inv.issueDate:toISO(new Date())}"></div>
+          <div class="field"><label>Due date</label><input type="date" id="fDue" value="${inv?inv.dueDate:toISO(new Date(Date.now()+14*86400000))}"></div>
+        </div>
+        <div class="section-label">Line Items</div>
+        <div id="liList"></div>
+        <button class="btn btn-ghost btn-sm" id="addLineBtn">+ Add line</button>
+        <div class="field" style="margin-top:18px;"><label>Notes</label><textarea id="fNotes">${inv?(inv.notes||""):"Payment due within 14 days. Thank you for your business."}</textarea></div>
+        <button class="btn btn-accent btn-block" id="fSaveInv" style="margin-top:6px;">${isEdit?"Save Changes":"Create Invoice"}</button>
+      </div>
+    `;
+    const liBox=el.querySelector("#liList");
+    liBox.innerHTML=lineItems.map((li,i)=>`
+      <div class="lineitem-row" data-i="${i}">
+        <div class="field"><label>${i===0?"Description":""}</label><input type="text" class="li-desc" value="${li.description}" placeholder="Item or service"></div>
+        <div class="field"><label>${i===0?"Qty":""}</label><input type="number" class="li-qty" value="${li.qty}" min="0" step="1"></div>
+        <div class="field"><label>${i===0?"Price":""}</label><input type="number" class="li-price" value="${li.unitPrice}" min="0" step="0.01"></div>
+        ${SETTINGS.vatEnabled?`<div class="field"><label>${i===0?"VAT":""}</label><select class="li-vat"><option value="0" ${li.vatRate===0?"selected":""}>0%</option><option value="5" ${li.vatRate===5?"selected":""}>5%</option><option value="20" ${li.vatRate===20?"selected":""}>20%</option></select></div>`:'<div></div>'}
+        <button class="inline-del" data-rm="${i}">${ICONS.trash}</button>
+      </div>
+    `).join("");
+    liBox.querySelectorAll(".lineitem-row").forEach(row=>{
+      const i=+row.dataset.i;
+      row.querySelector(".li-desc").addEventListener("input",e=>lineItems[i].description=e.target.value);
+      row.querySelector(".li-qty").addEventListener("input",e=>lineItems[i].qty=parseFloat(e.target.value)||0);
+      row.querySelector(".li-price").addEventListener("input",e=>lineItems[i].unitPrice=parseFloat(e.target.value)||0);
+      const vatSel=row.querySelector(".li-vat");
+      if(vatSel) vatSel.addEventListener("change",e=>lineItems[i].vatRate=parseFloat(e.target.value));
+    });
+    liBox.querySelectorAll("[data-rm]").forEach(b=>b.addEventListener("click",()=>{
+      if(lineItems.length<=1) return;
+      lineItems.splice(+b.dataset.rm,1);
+      draw();
+    }));
+    el.querySelector("#addLineBtn").addEventListener("click",()=>{
+      lineItems.push({description:"",qty:1,unitPrice:0,vatRate:SETTINGS.defaultVatRate});
+      draw();
+    });
+    el.querySelector("#newClientBtn").addEventListener("click",()=>openClientForm(null, "invoiceform"));
+
+    el.querySelector("#fSaveInv").addEventListener("click",()=>{
+      const clientId=el.querySelector("#fClient").value;
+      if(!clientId){ el.querySelector("#fClient").focus(); return; }
+      const issueDate=el.querySelector("#fIssue").value;
+      const dueDate=el.querySelector("#fDue").value;
+      const notes=el.querySelector("#fNotes").value;
+      const cleanItems=lineItems.filter(li=>li.description.trim());
+      if(isEdit){
+        Object.assign(inv,{clientId,issueDate,dueDate,notes,lineItems:cleanItems});
+      } else {
+        const number=SETTINGS.nextInvoiceNumber;
+        SETTINGS.nextInvoiceNumber=number+1;
+        saveSettings();
+        inv={id:uid("inv"), number, clientId, issueDate, dueDate, notes, lineItems:cleanItems, status:"draft"};
+        INVOICES.push(inv);
+      }
+      saveInvoices();
+      openInvoiceDetail(inv);
+    });
+  }
+  draw();
+}
+
+/* =========================================================
+   CLIENTS
+========================================================= */
+function renderClients(){
+  const el=document.getElementById("view-clients");
+  el.innerHTML=`
+    <div class="pagehead">
+      <div><div class="eyebrow">${CLIENTS.length} Client${CLIENTS.length===1?"":"s"}</div><h2>Clients</h2></div>
+      <button class="fabbtn" id="cAddBtn" aria-label="Add client">${ICONS.plus}</button>
+    </div>
+    <div id="cList"></div>
+  `;
+  el.querySelector("#cAddBtn").addEventListener("click",()=>openClientForm(null,"more"));
+  const box=el.querySelector("#cList");
+  if(CLIENTS.length===0){
+    box.innerHTML=`<div class="empty">No clients yet.<br><button class="btn btn-accent" id="cEmptyAdd">+ Add Client</button></div>`;
+    box.querySelector("#cEmptyAdd").addEventListener("click",()=>openClientForm(null,"more"));
+    return;
+  }
+  box.innerHTML=CLIENTS.map(c=>`<div class="row" data-cid="${c.id}"><div class="mid"><b>${c.name}</b><span>${c.email||""}</span></div>${ICONS.chev}</div>`).join("");
+  box.querySelectorAll("[data-cid]").forEach(row=>row.addEventListener("click",()=>openClientForm(CLIENTS.find(c=>c.id===row.dataset.cid),"more")));
+}
+let clientFormReturn="more";
+function openClientForm(client, returnTo){
+  clientFormReturn=returnTo||"more";
+  pushView("clientform", ()=>renderClientForm(client));
+}
+function renderClientForm(client){
+  const el=document.getElementById("view-clientform");
+  const isEdit=!!client;
+  el.innerHTML=`
+    <div class="formsheet">
+      <div class="field"><label>Client / Company Name</label><input type="text" id="fName" value="${client?client.name:""}"></div>
+      <div class="field"><label>Email</label><input type="email" id="fEmail" value="${client?(client.email||""):""}"></div>
+      <div class="field"><label>Billing Address</label><textarea id="fAddress">${client?(client.address||""):""}</textarea></div>
+      <button class="btn btn-accent btn-block" id="fSaveClient">${isEdit?"Save Changes":"Add Client"}</button>
+      ${isEdit?`<button class="btn btn-danger btn-block" id="fDelClient" style="margin-top:10px;">Delete Client</button>`:""}
+    </div>
+  `;
+  el.querySelector("#fSaveClient").addEventListener("click",()=>{
+    const name=el.querySelector("#fName").value.trim();
+    if(!name){ el.querySelector("#fName").focus(); return; }
+    const email=el.querySelector("#fEmail").value.trim();
+    const address=el.querySelector("#fAddress").value.trim();
+    if(isEdit){ Object.assign(client,{name,email,address}); }
+    else { client={id:uid("cl"),name,email,address}; CLIENTS.push(client); }
+    saveClients();
+    if(clientFormReturn==="invoiceform") openInvoiceForm(null); else pushView("clients", renderClients);
+  });
+  const delBtn=el.querySelector("#fDelClient");
+  if(delBtn) delBtn.addEventListener("click",()=>{
+    CLIENTS=CLIENTS.filter(c=>c.id!==client.id);
+    saveClients();
+    pushView("clients", renderClients);
+  });
+}
+
+/* =========================================================
+   MILEAGE
+========================================================= */
+function renderMileage(){
+  recalcMileageAmounts(); saveMileage();
+  const el=document.getElementById("view-mileage");
+  const sorted=MILEAGE.slice().sort((a,b)=> b.date<a.date?-1:b.date>a.date?1:0);
+  const ty=taxYearLabel(new Date());
+  const ytdMiles=MILEAGE.filter(m=>m.vehicleType==="car" && taxYearLabel(new Date(m.date+"T00:00:00"))===ty).reduce((s,m)=>s+m.miles,0);
+  const ytdAmount=MILEAGE.filter(m=>taxYearLabel(new Date(m.date+"T00:00:00"))===ty).reduce((s,m)=>s+m.amount,0);
+  el.innerHTML=`
+    <div class="pagehead">
+      <div><div class="eyebrow">Tax Year ${ty}</div><h2>Mileage</h2></div>
+      <button class="fabbtn" id="mAddBtn" aria-label="Log trip">${ICONS.plus}</button>
+    </div>
+    <p style="color:var(--ink-soft); font-size:13px; margin:-8px 0 18px;">Car mileage claims at 45p/mile for the first 10,000 miles this tax year, then 25p/mile — calculated automatically.</p>
+    <div class="stat-row two">
+      <div class="stat-tile"><b class="tabular">${ytdMiles.toLocaleString()}</b><span>Car miles YTD</span></div>
+      <div class="stat-tile income"><b class="tabular">${money(ytdAmount)}</b><span>Claimable YTD</span></div>
+    </div>
+    <div id="mList"></div>
+  `;
+  el.querySelector("#mAddBtn").addEventListener("click",()=>openMileageForm(null));
+  const box=el.querySelector("#mList");
+  if(sorted.length===0){
+    box.innerHTML=`<div class="empty">No trips logged yet.<br><button class="btn btn-accent" id="mEmptyAdd">+ Log Trip</button></div>`;
+    box.querySelector("#mEmptyAdd").addEventListener("click",()=>openMileageForm(null));
+    return;
+  }
+  box.innerHTML=sorted.map(m=>`<div class="row" data-mid="${m.id}">
+    <div class="mid"><b>${m.purpose||"Trip"}</b><span>${fmtDate(m.date)} · ${m.miles} mi · ${m.rate}p/mi</span></div>
+    <div class="amt income tabular">${money(m.amount)}</div>
+  </div>`).join("");
+  box.querySelectorAll("[data-mid]").forEach(row=>row.addEventListener("click",()=>openMileageForm(MILEAGE.find(m=>m.id===row.dataset.mid))));
+}
+function openMileageForm(m){ pushView("mileageform", ()=>renderMileageForm(m)); }
+function renderMileageForm(m){
+  const el=document.getElementById("view-mileageform");
+  const isEdit=!!m;
+  el.innerHTML=`
+    <div class="formsheet">
+      <div class="field"><label>Date</label><input type="date" id="fDate" value="${m?m.date:toISO(new Date())}"></div>
+      <div class="field"><label>Purpose</label><input type="text" id="fPurpose" value="${m?(m.purpose||""):""}" placeholder="e.g. Client visit — Manchester"></div>
+      <div class="field-row">
+        <div class="field"><label>Miles</label><input type="number" id="fMiles" min="0" step="0.1" value="${m?m.miles:""}"></div>
+        <div class="field"><label>Vehicle</label><select id="fVehicle">
+          <option value="car" ${(!m||m.vehicleType==="car")?"selected":""}>Car (45p / 25p)</option>
+          <option value="motorcycle" ${m&&m.vehicleType==="motorcycle"?"selected":""}>Motorcycle (24p)</option>
+          <option value="bicycle" ${m&&m.vehicleType==="bicycle"?"selected":""}>Bicycle (20p)</option>
+        </select></div>
+      </div>
+      <button class="btn btn-accent btn-block" id="fSaveMileage">${isEdit?"Save Changes":"Log Trip"}</button>
+      ${isEdit?`<button class="btn btn-danger btn-block" id="fDelMileage" style="margin-top:10px;">Delete</button>`:""}
+    </div>
+  `;
+  el.querySelector("#fSaveMileage").addEventListener("click",()=>{
+    const miles=parseFloat(el.querySelector("#fMiles").value);
+    if(!miles || miles<=0){ el.querySelector("#fMiles").focus(); return; }
+    const date=el.querySelector("#fDate").value||toISO(new Date());
+    const purpose=el.querySelector("#fPurpose").value.trim();
+    const vehicleType=el.querySelector("#fVehicle").value;
+    if(isEdit){ Object.assign(m,{miles,date,purpose,vehicleType}); }
+    else { MILEAGE.push({id:uid("mi"),miles,date,purpose,vehicleType,rate:0,amount:0}); }
+    saveMileage();
+    pushView("mileage", renderMileage);
+  });
+  const delBtn=el.querySelector("#fDelMileage");
+  if(delBtn) delBtn.addEventListener("click",()=>{
+    MILEAGE=MILEAGE.filter(x=>x.id!==m.id);
+    saveMileage();
+    pushView("mileage", renderMileage);
+  });
+}
+
+/* =========================================================
+   LOANS
+========================================================= */
+function loanRepayments(loanId){
+  return LOAN_REPAYMENTS.filter(r=>r.loanId===loanId).sort((a,b)=> a.date<b.date?-1:a.date>b.date?1:0);
+}
+function loanPrincipalPaid(loanId){ return loanRepayments(loanId).reduce((s,r)=>s+r.principalPortion,0); }
+function loanInterestPaid(loanId){ return loanRepayments(loanId).reduce((s,r)=>s+r.interestPortion,0); }
+function loanBalance(loan){ return Math.max(0, loan.principal - loanPrincipalPaid(loan.id)); }
+function loanTypeLabel(t){ return {bank:"Bank Loan", director:"Director's Loan", other:"Other Loan"}[t]||"Loan"; }
+
+function renderLoans(){
+  const el=document.getElementById("view-loans");
+  const totalOutstanding=LOANS.reduce((s,l)=>s+loanBalance(l),0);
+  const totalInterestYTD=LOAN_REPAYMENTS.filter(r=>taxYearLabel(new Date(r.date+"T00:00:00"))===taxYearLabel(new Date())).reduce((s,r)=>s+r.interestPortion,0);
+  el.innerHTML=`
+    <div class="pagehead">
+      <div><div class="eyebrow">${LOANS.length} Loan${LOANS.length===1?"":"s"}</div><h2>Loans &amp; Interest</h2></div>
+      <button class="fabbtn" id="loanAddBtn" aria-label="Add loan">${ICONS.plus}</button>
+    </div>
+    <div class="stat-row two">
+      <div class="stat-tile expense"><b class="tabular">${money(totalOutstanding)}</b><span>Outstanding</span></div>
+      <div class="stat-tile expense"><b class="tabular">${money(totalInterestYTD)}</b><span>Interest Paid YTD</span></div>
+    </div>
+    <div id="loanList"></div>
+  `;
+  el.querySelector("#loanAddBtn").addEventListener("click",()=>openLoanForm(null));
+  const box=el.querySelector("#loanList");
+  if(LOANS.length===0){
+    box.innerHTML=`<div class="empty">No loans logged yet.<br><button class="btn btn-accent" id="loanEmptyAdd">+ Add Loan</button></div>`;
+    box.querySelector("#loanEmptyAdd").addEventListener("click",()=>openLoanForm(null));
+    return;
+  }
+  box.innerHTML=LOANS.map(l=>{
+    const bal=loanBalance(l);
+    return `<div class="row" data-loanid="${l.id}">
+      <div class="mid"><b>${l.lender}</b><span>${loanTypeLabel(l.type)} · ${l.rate}% interest</span></div>
+      <div class="amt expense tabular">${money(bal)}</div>
+    </div>`;
+  }).join("");
+  box.querySelectorAll("[data-loanid]").forEach(row=>row.addEventListener("click",()=>openLoanDetail(row.dataset.loanid)));
+}
+
+let currentLoanId=null;
+function openLoanDetail(loanId){
+  currentLoanId=loanId;
+  pushView("loandetail", ()=>renderLoanDetail(loanId));
+}
+function renderLoanDetail(loanId){
+  const el=document.getElementById("view-loandetail");
+  const loan=LOANS.find(l=>l.id===loanId);
+  if(!loan){ showTab("more"); return; }
+  const reps=loanRepayments(loanId);
+  const bal=loanBalance(loan);
+  const interestPaid=loanInterestPaid(loanId);
+  el.innerHTML=`
+    <div class="pagehead"><div><div class="eyebrow">${loanTypeLabel(loan.type)}</div><h2>${loan.lender}</h2></div></div>
+    <div class="stat-row two">
+      <div class="stat-tile expense"><b class="tabular">${money(bal)}</b><span>Outstanding</span></div>
+      <div class="stat-tile"><b class="tabular">${loan.rate}%</b><span>Interest Rate</span></div>
+    </div>
+    <div class="stat-row two">
+      <div class="stat-tile"><b class="tabular">${money(loan.principal)}</b><span>Original Principal</span></div>
+      <div class="stat-tile expense"><b class="tabular">${money(interestPaid)}</b><span>Interest Paid</span></div>
+    </div>
+    ${loan.notes?`<p style="color:var(--ink-soft); font-size:13px;">${loan.notes}</p>`:""}
+    <button class="btn btn-accent btn-block" id="addRepayBtn" ${bal<=0?"disabled":""}>+ Add Repayment</button>
+    <button class="btn btn-ghost btn-block" id="printLoanBtn" style="margin-top:10px;">${ICONS.print} Print / Save PDF</button>
+    <div style="display:flex; gap:10px; margin-top:10px;">
+      <button class="btn btn-ghost" style="flex:1;" id="editLoanBtn">Edit Loan</button>
+      <button class="btn btn-danger" style="flex:1;" id="delLoanBtn">Delete</button>
+    </div>
+    <div class="section-label">Repayment History</div>
+    <div id="repList"></div>
+    <div class="invoice-sheet print-sheet">
+      ${reportHeaderHTML("Loan Statement", [`As of ${fmtDate(toISO(new Date()))}`])}
+      <div class="invoice-to"><div class="lbl">Loan</div><b>${loan.lender}</b><span>${loanTypeLabel(loan.type)} · ${loan.rate}% interest p.a. · Started ${fmtDate(loan.startDate)}</span></div>
+      <table class="itable">
+        <thead><tr><th>Date</th><th class="num">Payment</th><th class="num">Principal</th><th class="num">Interest</th></tr></thead>
+        <tbody>${reps.length?reps.map(r=>`<tr><td>${fmtDate(r.date)}</td><td class="num tabular">${money(r.amount)}</td><td class="num tabular">${money(r.principalPortion)}</td><td class="num tabular">${money(r.interestPortion)}</td></tr>`).join(""):`<tr><td colspan="4" style="color:var(--ink-soft);">No repayments logged.</td></tr>`}</tbody>
+      </table>
+      <div class="itotals">
+        <div><span>Original Principal</span><span class="tabular">${money(loan.principal)}</span></div>
+        <div><span>Total Interest Paid</span><span class="tabular">${money(interestPaid)}</span></div>
+        <div class="grand"><span>Outstanding Balance</span><span class="tabular">${money(bal)}</span></div>
+      </div>
+    </div>
+  `;
+  el.querySelector("#addRepayBtn").addEventListener("click",()=>openRepayForm(loanId));
+  el.querySelector("#printLoanBtn").addEventListener("click",()=>window.print());
+  el.querySelector("#editLoanBtn").addEventListener("click",()=>openLoanForm(loan));
+  el.querySelector("#delLoanBtn").addEventListener("click",()=>{
+    const linkedTxIds=loanRepayments(loanId).map(r=>r.linkedTransactionId).filter(Boolean);
+    TRANSACTIONS=TRANSACTIONS.filter(t=>!linkedTxIds.includes(t.id));
+    saveTransactions();
+    LOAN_REPAYMENTS=LOAN_REPAYMENTS.filter(r=>r.loanId!==loanId);
+    saveLoanRepayments();
+    LOANS=LOANS.filter(l=>l.id!==loanId);
+    saveLoans();
+    pushView("loans", renderLoans);
+  });
+  const box=el.querySelector("#repList");
+  if(reps.length===0){
+    box.innerHTML=`<div class="empty">No repayments logged yet.</div>`;
+  } else {
+    box.innerHTML=reps.slice().reverse().map(r=>`<div class="row" style="cursor:default;">
+      <div class="mid"><b class="tabular">${money(r.amount)}</b><span>${fmtDate(r.date)} · ${money(r.principalPortion)} principal, ${money(r.interestPortion)} interest</span></div>
+    </div>`).join("");
+  }
+}
+
+function openLoanForm(loan){
+  if(loan) currentLoanId=loan.id;
+  pushView("loanform", ()=>renderLoanForm(loan));
+}
+function renderLoanForm(loan){
+  const el=document.getElementById("view-loanform");
+  const isEdit=!!loan;
+  el.innerHTML=`
+    <div class="formsheet">
+      <div class="field"><label>Lender</label><input type="text" id="fLender" value="${loan?loan.lender:""}" placeholder="e.g. Barclays Bank, or your own name"></div>
+      <div class="field"><label>Loan Type</label><select id="fType">
+        <option value="bank" ${(!loan||loan.type==="bank")?"selected":""}>Bank Loan</option>
+        <option value="director" ${loan&&loan.type==="director"?"selected":""}>Director's Loan</option>
+        <option value="other" ${loan&&loan.type==="other"?"selected":""}>Other</option>
+      </select></div>
+      <div class="field-row">
+        <div class="field"><label>Principal (£)</label><input type="number" id="fPrincipal" min="0" step="0.01" value="${loan?loan.principal:""}"></div>
+        <div class="field"><label>Interest Rate (% p.a.)</label><input type="number" id="fRate" min="0" step="0.01" value="${loan?loan.rate:""}"></div>
+      </div>
+      <div class="field"><label>Start Date</label><input type="date" id="fStart" value="${loan?loan.startDate:toISO(new Date())}"></div>
+      <div class="field"><label>Notes</label><textarea id="fNotes">${loan?(loan.notes||""):""}</textarea></div>
+      <button class="btn btn-accent btn-block" id="fSaveLoan">${isEdit?"Save Changes":"Add Loan"}</button>
+    </div>
+  `;
+  el.querySelector("#fSaveLoan").addEventListener("click",()=>{
+    const lender=el.querySelector("#fLender").value.trim();
+    const principal=parseFloat(el.querySelector("#fPrincipal").value);
+    if(!lender || !principal || principal<=0) return;
+    const type=el.querySelector("#fType").value;
+    const rate=parseFloat(el.querySelector("#fRate").value)||0;
+    const startDate=el.querySelector("#fStart").value||toISO(new Date());
+    const notes=el.querySelector("#fNotes").value.trim();
+    if(isEdit){ Object.assign(loan,{lender,type,principal,rate,startDate,notes}); saveLoans(); openLoanDetail(loan.id); }
+    else { loan={id:uid("ln"),lender,type,principal,rate,startDate,notes}; LOANS.push(loan); saveLoans(); openLoanDetail(loan.id); }
+  });
+}
+
+function openRepayForm(loanId){
+  currentLoanId=loanId;
+  pushView("repayform", ()=>renderRepayForm(loanId));
+}
+function renderRepayForm(loanId){
+  const el=document.getElementById("view-repayform");
+  const loan=LOANS.find(l=>l.id===loanId);
+  const bal=loanBalance(loan);
+  el.innerHTML=`
+    <div class="formsheet">
+      <p style="color:var(--ink-soft); font-size:13px; margin-top:-6px;">Outstanding balance: <b class="tabular" style="color:var(--ink);">${money(bal)}</b></p>
+      <div class="field"><label>Date</label><input type="date" id="fDate" value="${toISO(new Date())}"></div>
+      <div class="field"><label>Total Payment (£)</label><input type="number" id="fAmount" min="0" step="0.01" placeholder="0.00"></div>
+      <div class="field"><label>Interest Portion (£)</label><input type="number" id="fInterest" min="0" step="0.01" placeholder="0.00"></div>
+      <p style="color:var(--ink-faint); font-size:12px; margin-top:-8px;">The rest goes toward principal. Check your loan statement for the exact split — this creates a Loan Interest expense for the interest portion only.</p>
+      <button class="btn btn-accent btn-block" id="fSaveRepay">Add Repayment</button>
+    </div>
+  `;
+  el.querySelector("#fSaveRepay").addEventListener("click",()=>{
+    const amount=parseFloat(el.querySelector("#fAmount").value);
+    if(!amount || amount<=0) return;
+    const date=el.querySelector("#fDate").value||toISO(new Date());
+    let interestPortion=parseFloat(el.querySelector("#fInterest").value);
+    if(isNaN(interestPortion)||interestPortion<0) interestPortion=0;
+    if(interestPortion>amount) interestPortion=amount;
+    const principalPortion=amount-interestPortion;
+    const rep={id:uid("rp"), loanId, date, amount, interestPortion, principalPortion, linkedTransactionId:null};
+    if(interestPortion>0){
+      const t={id:uid("tx"), type:"expense", amount:interestPortion, date, category:"loan-interest", description:`Loan interest — ${loan.lender}`, vatRate:0};
+      TRANSACTIONS.push(t);
+      rep.linkedTransactionId=t.id;
+      saveTransactions();
+    }
+    LOAN_REPAYMENTS.push(rep);
+    saveLoanRepayments();
+    openLoanDetail(loanId);
+  });
+}
+
+/* =========================================================
+   PROPERTIES
+========================================================= */
+const RENT_STATUS_BADGE={paid:"paid", partial:"sent", due:"overdue", void:"draft"};
+const RENT_STATUS_LABEL={paid:"Rent paid", partial:"Partial", due:"Rent due", void:"Vacant"};
+const CERT_STATUS_BADGE={valid:"paid", soon:"sent", expired:"overdue"};
+const CERT_STATUS_LABEL={valid:"Valid", soon:"Due soon", expired:"Expired"};
+
+function renderProperties(){
+  const el=document.getElementById("view-properties");
+  const rows=rentRollRows();
+  const totalExpected=rows.reduce((s,r)=>s+r.expected,0);
+  const totalReceived=rows.reduce((s,r)=>s+r.received,0);
+  const totalDue=Math.max(0,totalExpected-totalReceived);
+  el.innerHTML=`
+    <div class="pagehead">
+      <div><div class="eyebrow">${PROPERTIES.length} Propert${PROPERTIES.length===1?"y":"ies"}</div><h2>Properties</h2></div>
+      <button class="fabbtn" id="propAddBtn" aria-label="Add property">${ICONS.plus}</button>
+    </div>
+    ${PROPERTIES.length?`<div class="stat-row two">
+      <div class="stat-tile income"><b class="tabular">${money(totalExpected)}</b><span>Rent Expected / Mo.</span></div>
+      <div class="stat-tile ${totalDue>0?"expense":""}"><b class="tabular">${money(totalDue)}</b><span>Outstanding This Month</span></div>
+    </div>`:""}
+    <div id="propList"></div>
+  `;
+  el.querySelector("#propAddBtn").addEventListener("click",()=>openPropertyForm(null));
+  const box=el.querySelector("#propList");
+  if(PROPERTIES.length===0){
+    box.innerHTML=`<div class="empty">No properties yet.<br><button class="btn btn-accent" id="propEmptyAdd">+ Add Property</button></div>`;
+    box.querySelector("#propEmptyAdd").addEventListener("click",()=>openPropertyForm(null));
+    return;
+  }
+  box.innerHTML=rows.map(r=>{
+    const cstat=propertyWorstCertStatus(r.property.id);
+    return `<div class="row" data-propid="${r.property.id}">
+      <div class="mid"><b>${propertyLabel(r.property)}</b><span>${r.tenancy?money(r.expected)+"/mo · "+r.tenancy.tenantName:"No active tenancy"}${cstat!=="valid"?` · ${cstat==="expired"?"Certificate expired":"Certificate due soon"}`:""}</span></div>
+      <span class="badge ${RENT_STATUS_BADGE[r.status]}">${RENT_STATUS_LABEL[r.status]}</span>
+    </div>`;
+  }).join("");
+  box.querySelectorAll("[data-propid]").forEach(row=>row.addEventListener("click",()=>openPropertyDetail(row.dataset.propid)));
+}
+
+let currentPropertyId=null;
+function openPropertyDetail(propertyId){
+  currentPropertyId=propertyId;
+  pushView("propertydetail", ()=>renderPropertyDetail(propertyId));
+}
+function renderPropertyDetail(propertyId){
+  const el=document.getElementById("view-propertydetail");
+  const p=propertyById(propertyId);
+  if(!p){ pushView("properties", renderProperties); return; }
+  const tenancy=activeTenancy(propertyId);
+  const mStart=toISO(startOfMonth(new Date())), mEnd=toISO(addMonths(new Date(),1));
+  const monthPL=propertyPL(propertyId, mStart, mEnd);
+  const ytdPL=propertyPL(propertyId, toISO(taxYearStart(new Date())), toISO(new Date()));
+  const certs=propertyCertificates(propertyId);
+  const txs=propertyTransactions(propertyId).slice().sort((a,b)=> b.date<a.date?-1:b.date>a.date?1:0).slice(0,8);
+
+  el.innerHTML=`
+    <div class="pagehead"><div><div class="eyebrow">Property</div><h2>${propertyLabel(p)}</h2></div></div>
+    <p style="color:var(--ink-soft); font-size:13px; margin-top:-14px; white-space:pre-line;">${p.address}</p>
+    <div class="stat-row two">
+      <div class="stat-tile income"><b class="tabular">${money(monthPL.income)}</b><span>Income This Month</span></div>
+      <div class="stat-tile expense"><b class="tabular">${money(monthPL.expense)}</b><span>Expenses This Month</span></div>
+    </div>
+    <div class="stat-row two">
+      <div class="stat-tile"><b class="tabular" style="color:${ytdPL.profit>=0?"var(--accent)":"var(--danger)"}">${money(ytdPL.profit)}</b><span>Profit (Tax Year ${taxYearLabel(new Date())})</span></div>
+      <div class="stat-tile"><b class="tabular">${money(p.purchasePrice||0)}</b><span>Purchase Price</span></div>
+    </div>
+
+    <div class="section-label">Tenancy</div>
+    ${tenancy?`<div class="card" style="padding:14px 16px; margin-bottom:10px;">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+        <div>
+          <b style="font-size:14.5px;">${tenancy.tenantName}</b>
+          <div style="font-size:12px; color:var(--ink-soft); margin-top:2px;">${money(tenancy.rentAmount)} ${tenancy.rentFrequency} · Since ${fmtDate(tenancy.startDate)}${tenancy.endDate?" · Ends "+fmtDate(tenancy.endDate):""}</div>
+          ${tenancy.depositAmount?`<div style="font-size:12px; color:var(--ink-soft); margin-top:2px;">Deposit ${money(tenancy.depositAmount)}${tenancy.depositScheme?" · "+tenancy.depositScheme:" · Not protected"}${tenancy.depositRef?" · Ref "+tenancy.depositRef:""}</div>`:""}
+        </div>
+        <button class="btn btn-ghost btn-sm" id="editTenancyBtn">Edit</button>
+      </div>
+    </div>
+    <button class="btn btn-ghost btn-block" id="addTenancyBtn2" style="margin-bottom:20px;">+ New Tenancy (renewal / new tenant)</button>
+    `:`<div class="empty" style="padding:20px;">No active tenancy — this property is vacant.<br><button class="btn btn-accent btn-sm" id="addTenancyBtn" style="margin-top:10px;">+ Add Tenancy</button></div>`}
+
+    <div class="section-label">Compliance Certificates</div>
+    <div id="certList"></div>
+    <button class="btn btn-ghost btn-block" id="addCertBtn" style="margin:10px 0 20px;">+ Add Certificate</button>
+
+    <div class="section-label">Transactions</div>
+    <div id="propTxList"></div>
+    <div style="display:flex; gap:10px; margin-top:10px;">
+      <button class="btn btn-ghost" style="flex:1;" id="addTxBtn">+ Add Transaction</button>
+      <button class="btn btn-ghost" style="flex:1;" id="scanTxBtn">${ICONS.upload} Scan PDF</button>
+    </div>
+
+    <div style="display:flex; gap:10px; margin-top:20px;">
+      <button class="btn btn-ghost" style="flex:1;" id="editPropBtn">Edit Property</button>
+      <button class="btn btn-danger" style="flex:1;" id="delPropBtn">Delete</button>
+    </div>
+  `;
+  const at1=el.querySelector("#addTenancyBtn"); if(at1) at1.addEventListener("click",()=>openTenancyForm(propertyId,null));
+  const at2=el.querySelector("#addTenancyBtn2"); if(at2) at2.addEventListener("click",()=>openTenancyForm(propertyId,null));
+  const et=el.querySelector("#editTenancyBtn"); if(et) et.addEventListener("click",()=>openTenancyForm(propertyId,tenancy));
+
+  const certBox=el.querySelector("#certList");
+  if(certs.length===0){
+    certBox.innerHTML=`<div class="empty">No certificates logged.</div>`;
+  } else {
+    certBox.innerHTML=certs.map(c=>`<div class="row" data-certid="${c.id}">
+      <div class="mid"><b>${certTypeLabel(c.type)}</b><span>Expires ${fmtDate(c.expiryDate)}</span></div>
+      <span class="badge ${CERT_STATUS_BADGE[certStatus(c)]}">${CERT_STATUS_LABEL[certStatus(c)]}</span>
+    </div>`).join("");
+    certBox.querySelectorAll("[data-certid]").forEach(row=>row.addEventListener("click",()=>openCertForm(propertyId, CERTIFICATES.find(c=>c.id===row.dataset.certid))));
+  }
+  el.querySelector("#addCertBtn").addEventListener("click",()=>openCertForm(propertyId,null));
+
+  const txBox=el.querySelector("#propTxList");
+  if(txs.length===0){ txBox.innerHTML=`<div class="empty">No transactions yet.</div>`; }
+  else { txBox.innerHTML=txs.map(txRowHTML).join(""); wireTxRows(txBox, propertyId); }
+  el.querySelector("#addTxBtn").addEventListener("click",()=>openTxForm(null, propertyId));
+  el.querySelector("#scanTxBtn").addEventListener("click",()=>pickReceipt(propertyId));
+
+  el.querySelector("#editPropBtn").addEventListener("click",()=>openPropertyForm(p));
+  el.querySelector("#delPropBtn").addEventListener("click",()=>{
+    TENANCIES=TENANCIES.filter(t=>t.propertyId!==propertyId);
+    saveTenancies();
+    CERTIFICATES=CERTIFICATES.filter(c=>c.propertyId!==propertyId);
+    saveCertificates();
+    TRANSACTIONS.forEach(t=>{ if(t.propertyId===propertyId) t.propertyId=null; });
+    saveTransactions();
+    PROPERTIES=PROPERTIES.filter(x=>x.id!==propertyId);
+    saveProperties();
+    pushView("properties", renderProperties);
+  });
+}
+
+function openPropertyForm(property){
+  if(property) currentPropertyId=property.id;
+  pushView("propertyform", ()=>renderPropertyForm(property));
+}
+function renderPropertyForm(property){
+  const el=document.getElementById("view-propertyform");
+  const isEdit=!!property;
+  el.innerHTML=`
+    <div class="formsheet">
+      <div class="field"><label>Address</label><textarea id="fAddress" placeholder="1 High Street, London, EC1A 1AA">${property?property.address:""}</textarea></div>
+      <div class="field"><label>Nickname (optional)</label><input type="text" id="fNickname" value="${property?(property.nickname||""):""}" placeholder="e.g. Flat 2, The Old Mill"></div>
+      <div class="field-row">
+        <div class="field"><label>Purchase Date</label><input type="date" id="fPurchaseDate" value="${property?(property.purchaseDate||""):""}"></div>
+        <div class="field"><label>Purchase Price (£)</label><input type="number" id="fPurchasePrice" min="0" step="0.01" value="${property?(property.purchasePrice||""):""}"></div>
+      </div>
+      <div class="field"><label>Notes</label><textarea id="fNotes">${property?(property.notes||""):""}</textarea></div>
+      <button class="btn btn-accent btn-block" id="fSaveProp">${isEdit?"Save Changes":"Add Property"}</button>
+    </div>
+  `;
+  el.querySelector("#fSaveProp").addEventListener("click",()=>{
+    const address=el.querySelector("#fAddress").value.trim();
+    if(!address){ el.querySelector("#fAddress").focus(); return; }
+    const nickname=el.querySelector("#fNickname").value.trim();
+    const purchaseDate=el.querySelector("#fPurchaseDate").value;
+    const purchasePrice=parseFloat(el.querySelector("#fPurchasePrice").value)||0;
+    const notes=el.querySelector("#fNotes").value.trim();
+    if(isEdit){ Object.assign(property,{address,nickname,purchaseDate,purchasePrice,notes}); saveProperties(); openPropertyDetail(property.id); }
+    else { property={id:uid("prop"),address,nickname,purchaseDate,purchasePrice,notes}; PROPERTIES.push(property); saveProperties(); openPropertyDetail(property.id); }
+  });
+}
+
+function openTenancyForm(propertyId, tenancy){
+  currentPropertyId=propertyId;
+  pushView("tenancyform", ()=>renderTenancyForm(propertyId, tenancy));
+}
+function renderTenancyForm(propertyId, tenancy){
+  const el=document.getElementById("view-tenancyform");
+  const isEdit=!!tenancy;
+  el.innerHTML=`
+    <div class="formsheet">
+      <div class="field"><label>Tenant Name</label><input type="text" id="fName" value="${tenancy?tenancy.tenantName:""}"></div>
+      <div class="field-row">
+        <div class="field"><label>Email</label><input type="email" id="fEmail" value="${tenancy?(tenancy.tenantEmail||""):""}"></div>
+        <div class="field"><label>Phone</label><input type="text" id="fPhone" value="${tenancy?(tenancy.tenantPhone||""):""}"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Rent Amount (£)</label><input type="number" id="fRent" min="0" step="0.01" value="${tenancy?tenancy.rentAmount:""}"></div>
+        <div class="field"><label>Frequency</label><select id="fFreq">
+          <option value="monthly" ${(!tenancy||tenancy.rentFrequency==="monthly")?"selected":""}>Monthly</option>
+          <option value="weekly" ${tenancy&&tenancy.rentFrequency==="weekly"?"selected":""}>Weekly</option>
+        </select></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Start Date</label><input type="date" id="fStart" value="${tenancy?tenancy.startDate:toISO(new Date())}"></div>
+        <div class="field"><label>End Date (optional)</label><input type="date" id="fEnd" value="${tenancy?(tenancy.endDate||""):""}"></div>
+      </div>
+      <div class="section-label">Deposit</div>
+      <div class="field-row">
+        <div class="field"><label>Deposit Amount (£)</label><input type="number" id="fDeposit" min="0" step="0.01" value="${tenancy?(tenancy.depositAmount||""):""}"></div>
+        <div class="field"><label>Protection Scheme</label><select id="fScheme">
+          <option value="">Not protected yet</option>
+          <option value="DPS" ${tenancy&&tenancy.depositScheme==="DPS"?"selected":""}>DPS</option>
+          <option value="MyDeposits" ${tenancy&&tenancy.depositScheme==="MyDeposits"?"selected":""}>MyDeposits</option>
+          <option value="TDS" ${tenancy&&tenancy.depositScheme==="TDS"?"selected":""}>TDS</option>
+        </select></div>
+      </div>
+      <div class="field"><label>Deposit Reference</label><input type="text" id="fDepositRef" value="${tenancy?(tenancy.depositRef||""):""}"></div>
+      <div class="field"><label>Notes</label><textarea id="fNotes">${tenancy?(tenancy.notes||""):""}</textarea></div>
+      <button class="btn btn-accent btn-block" id="fSaveTenancy">${isEdit?"Save Changes":"Add Tenancy"}</button>
+      ${isEdit?`<button class="btn btn-danger btn-block" id="fDelTenancy" style="margin-top:10px;">Delete Tenancy</button>`:""}
+    </div>
+  `;
+  el.querySelector("#fSaveTenancy").addEventListener("click",()=>{
+    const tenantName=el.querySelector("#fName").value.trim();
+    const rentAmount=parseFloat(el.querySelector("#fRent").value);
+    if(!tenantName || !rentAmount || rentAmount<=0) return;
+    const tenantEmail=el.querySelector("#fEmail").value.trim();
+    const tenantPhone=el.querySelector("#fPhone").value.trim();
+    const rentFrequency=el.querySelector("#fFreq").value;
+    const startDate=el.querySelector("#fStart").value||toISO(new Date());
+    const endDate=el.querySelector("#fEnd").value||null;
+    const depositAmount=parseFloat(el.querySelector("#fDeposit").value)||0;
+    const depositScheme=el.querySelector("#fScheme").value;
+    const depositRef=el.querySelector("#fDepositRef").value.trim();
+    const notes=el.querySelector("#fNotes").value.trim();
+    if(isEdit){ Object.assign(tenancy,{tenantName,tenantEmail,tenantPhone,rentAmount,rentFrequency,startDate,endDate,depositAmount,depositScheme,depositRef,notes}); }
+    else { TENANCIES.push({id:uid("ten"),propertyId,tenantName,tenantEmail,tenantPhone,rentAmount,rentFrequency,startDate,endDate,depositAmount,depositScheme,depositRef,notes}); }
+    saveTenancies();
+    openPropertyDetail(propertyId);
+  });
+  const delBtn=el.querySelector("#fDelTenancy");
+  if(delBtn) delBtn.addEventListener("click",()=>{
+    TENANCIES=TENANCIES.filter(t=>t.id!==tenancy.id);
+    saveTenancies();
+    openPropertyDetail(propertyId);
+  });
+}
+
+function openCertForm(propertyId, cert){
+  currentPropertyId=propertyId;
+  pushView("certform", ()=>renderCertForm(propertyId, cert));
+}
+function renderCertForm(propertyId, cert){
+  const el=document.getElementById("view-certform");
+  const isEdit=!!cert;
+  el.innerHTML=`
+    <div class="formsheet">
+      <div class="field"><label>Certificate Type</label><select id="fType">
+        ${CERT_TYPES.map(t=>`<option value="${t.id}" ${cert&&cert.type===t.id?"selected":""}>${t.label}</option>`).join("")}
+      </select></div>
+      <div class="field-row">
+        <div class="field"><label>Issue Date</label><input type="date" id="fIssue" value="${cert?cert.issueDate:toISO(new Date())}"></div>
+        <div class="field"><label>Expiry Date</label><input type="date" id="fExpiry" value="${cert?cert.expiryDate:""}"></div>
+      </div>
+      <div class="field"><label>Notes</label><textarea id="fNotes">${cert?(cert.notes||""):""}</textarea></div>
+      <button class="btn btn-accent btn-block" id="fSaveCert">${isEdit?"Save Changes":"Add Certificate"}</button>
+      ${isEdit?`<button class="btn btn-danger btn-block" id="fDelCert" style="margin-top:10px;">Delete</button>`:""}
+    </div>
+  `;
+  let expiryTouched=false;
+  el.querySelector("#fExpiry").addEventListener("input",()=>{ expiryTouched=true; });
+  function suggestExpiry(){
+    if(expiryTouched) return;
+    const issueVal=el.querySelector("#fIssue").value;
+    if(!issueVal) return;
+    const typeId=el.querySelector("#fType").value;
+    const t=CERT_TYPES.find(x=>x.id===typeId);
+    if(!t) return;
+    const d=new Date(issueVal+"T00:00:00");
+    d.setMonth(d.getMonth()+t.validMonths);
+    el.querySelector("#fExpiry").value=toISO(d);
+  }
+  el.querySelector("#fIssue").addEventListener("change",suggestExpiry);
+  el.querySelector("#fType").addEventListener("change",suggestExpiry);
+  if(!isEdit) suggestExpiry();
+
+  el.querySelector("#fSaveCert").addEventListener("click",()=>{
+    const type=el.querySelector("#fType").value;
+    const issueDate=el.querySelector("#fIssue").value||toISO(new Date());
+    const expiryDate=el.querySelector("#fExpiry").value;
+    if(!expiryDate){ el.querySelector("#fExpiry").focus(); return; }
+    const notes=el.querySelector("#fNotes").value.trim();
+    if(isEdit){ Object.assign(cert,{type,issueDate,expiryDate,notes}); }
+    else { CERTIFICATES.push({id:uid("cert"),propertyId,type,issueDate,expiryDate,notes}); }
+    saveCertificates();
+    openPropertyDetail(propertyId);
+  });
+  const delBtn=el.querySelector("#fDelCert");
+  if(delBtn) delBtn.addEventListener("click",()=>{
+    CERTIFICATES=CERTIFICATES.filter(c=>c.id!==cert.id);
+    saveCertificates();
+    openPropertyDetail(propertyId);
+  });
+}
+
+/* =========================================================
+   PROFIT & LOSS REPORT
+========================================================= */
+function plCategoryTotals(list, type){
+  const map={};
+  list.filter(t=>t.type===type).forEach(t=>{
+    const c=catById(t.category);
+    const key=c?c.id:"uncategorised";
+    const label=c?c.label:"Uncategorised";
+    if(!map[key]) map[key]={label, total:0};
+    map[key].total+=t.amount;
+  });
+  return Object.values(map).sort((a,b)=>b.total-a.total);
+}
+
+let plFrom="", plTo="";
+function renderPLReport(){
+  const el=document.getElementById("view-plreport");
+  if(!plFrom && !plTo){
+    plFrom=toISO(taxYearStart(new Date()));
+    plTo=toISO(new Date());
+  }
+  el.innerHTML=`
+    <div class="pagehead"><div><div class="eyebrow">Report</div><h2>Profit &amp; Loss</h2></div></div>
+    <div class="field-row">
+      <div class="field"><label>From</label><input type="date" id="plFromInput" value="${plFrom}"></div>
+      <div class="field"><label>To</label><input type="date" id="plToInput" value="${plTo}"></div>
+    </div>
+    <div class="chiprow">
+      <button class="chip" id="plThisYear">This Tax Year</button>
+      <button class="chip" id="plLastYear">Last Tax Year</button>
+    </div>
+    <div id="plBody"></div>
+  `;
+  el.querySelector("#plFromInput").addEventListener("change",e=>{ plFrom=e.target.value; renderBody(); });
+  el.querySelector("#plToInput").addEventListener("change",e=>{ plTo=e.target.value; renderBody(); });
+  el.querySelector("#plThisYear").addEventListener("click",()=>{
+    plFrom=toISO(taxYearStart(new Date())); plTo=toISO(new Date());
+    el.querySelector("#plFromInput").value=plFrom; el.querySelector("#plToInput").value=plTo;
+    renderBody();
+  });
+  el.querySelector("#plLastYear").addEventListener("click",()=>{
+    const ref=new Date(); ref.setFullYear(ref.getFullYear()-1);
+    const s=taxYearStart(ref);
+    plFrom=toISO(s); plTo=toISO(new Date(s.getFullYear()+1,3,5));
+    el.querySelector("#plFromInput").value=plFrom; el.querySelector("#plToInput").value=plTo;
+    renderBody();
+  });
+
+  function renderBody(){
+    const list=TRANSACTIONS.filter(t=>t.date>=plFrom && t.date<=plTo);
+    const income=list.filter(t=>t.type==="income").reduce((s,t)=>s+t.amount,0);
+    const expense=list.filter(t=>t.type==="expense").reduce((s,t)=>s+t.amount,0);
+    const incomeCats=plCategoryTotals(list,"income");
+    const expenseCats=plCategoryTotals(list,"expense");
+
+    const propRows=PROPERTIES.map(p=>({label:propertyLabel(p), ...propertyPL(p.id, plFrom, plTo)})).filter(r=>r.income||r.expense);
+    const unassigned=list.filter(t=>!t.propertyId);
+    const unassignedIncome=unassigned.filter(t=>t.type==="income").reduce((s,t)=>s+t.amount,0);
+    const unassignedExpense=unassigned.filter(t=>t.type==="expense").reduce((s,t)=>s+t.amount,0);
+
+    el.querySelector("#plBody").innerHTML=`
+      <div class="stat-row two" style="margin-top:18px;">
+        <div class="stat-tile income"><b class="tabular">${money(income)}</b><span>Total Income</span></div>
+        <div class="stat-tile expense"><b class="tabular">${money(expense)}</b><span>Total Expenses</span></div>
+      </div>
+      <div class="card" style="padding:18px; text-align:center; margin-bottom:20px;">
+        <div style="font-size:11.5px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px;">Net Profit</div>
+        <div style="font-family:'Newsreader',serif; font-weight:700; font-size:30px; color:${income-expense>=0?"var(--accent)":"var(--danger)"};">${money(income-expense)}</div>
+      </div>
+      <button class="btn btn-ghost btn-block" id="plPrintBtn" style="margin-bottom:20px;">${ICONS.print} Print / Save PDF</button>
+
+      <div class="section-label">Income by Category</div>
+      ${incomeCats.length?incomeCats.map(c=>`<div class="row" style="cursor:default;"><div class="mid"><b>${c.label}</b></div><div class="amt income tabular">${money(c.total)}</div></div>`).join(""):`<div class="empty">No income in this period.</div>`}
+
+      <div class="section-label">Expenses by Category</div>
+      ${expenseCats.length?expenseCats.map(c=>`<div class="row" style="cursor:default;"><div class="mid"><b>${c.label}</b></div><div class="amt expense tabular">${money(c.total)}</div></div>`).join(""):`<div class="empty">No expenses in this period.</div>`}
+
+      ${propRows.length?`<div class="section-label">By Property</div>
+      ${propRows.map(r=>`<div class="row" style="cursor:default;"><div class="mid"><b>${r.label}</b><span>Income ${money(r.income)} · Expenses ${money(r.expense)}</span></div><div class="amt tabular" style="color:${r.profit>=0?"var(--accent)":"var(--danger)"}">${money(r.profit)}</div></div>`).join("")}
+      <div class="row" style="cursor:default;"><div class="mid"><b>Company Overheads</b><span>Not linked to a property · Income ${money(unassignedIncome)} · Expenses ${money(unassignedExpense)}</span></div><div class="amt tabular" style="color:${unassignedIncome-unassignedExpense>=0?"var(--accent)":"var(--danger)"}">${money(unassignedIncome-unassignedExpense)}</div></div>
+      `:""}
+
+      <div class="invoice-sheet print-sheet">
+        ${reportHeaderHTML("Profit & Loss Report", [`${fmtDate(plFrom)} – ${fmtDate(plTo)}`])}
+        <table class="itable">
+          <thead><tr><th>Category</th><th class="num">Amount</th></tr></thead>
+          <tbody>
+            <tr><td style="font-weight:700;">Income</td><td class="num"></td></tr>
+            ${incomeCats.map(c=>`<tr><td>${c.label}</td><td class="num tabular">${money(c.total)}</td></tr>`).join("")}
+            <tr><td style="font-weight:700;">Expenses</td><td class="num"></td></tr>
+            ${expenseCats.map(c=>`<tr><td>${c.label}</td><td class="num tabular">${money(-c.total)}</td></tr>`).join("")}
+          </tbody>
+        </table>
+        <div class="itotals">
+          <div><span>Total Income</span><span class="tabular">${money(income)}</span></div>
+          <div><span>Total Expenses</span><span class="tabular">${money(expense)}</span></div>
+          <div class="grand"><span>Net Profit</span><span class="tabular">${money(income-expense)}</span></div>
+        </div>
+        ${propRows.length?`<div class="section-label" style="margin-top:20px;">By Property</div>
+        <table class="itable">
+          <thead><tr><th>Property</th><th class="num">Income</th><th class="num">Expenses</th><th class="num">Profit</th></tr></thead>
+          <tbody>
+            ${propRows.map(r=>`<tr><td>${r.label}</td><td class="num tabular">${money(r.income)}</td><td class="num tabular">${money(r.expense)}</td><td class="num tabular">${money(r.profit)}</td></tr>`).join("")}
+            <tr><td>Company Overheads</td><td class="num tabular">${money(unassignedIncome)}</td><td class="num tabular">${money(unassignedExpense)}</td><td class="num tabular">${money(unassignedIncome-unassignedExpense)}</td></tr>
+          </tbody>
+        </table>`:""}
+      </div>
+    `;
+    el.querySelector("#plPrintBtn").addEventListener("click",()=>window.print());
+  }
+  renderBody();
+}
+
+/* =========================================================
+   INVOICE ARCHIVE
+========================================================= */
+function archivedTransactions(){
+  return TRANSACTIONS.filter(t=>t.attachmentId).slice().sort((a,b)=> b.date<a.date?-1:b.date>a.date?1:0);
+}
+function renderArchive(){
+  const el=document.getElementById("view-archive");
+  const list=archivedTransactions();
+  el.innerHTML=`
+    <div class="pagehead"><div><div class="eyebrow">${list.length} Saved Invoice${list.length===1?"":"s"}</div><h2>Invoice Archive</h2></div></div>
+    <div class="dropzone" id="arDrop">${ICONS.upload}<div>Drop PDF invoices or receipts here (one or several), or tap to choose them<br>The total, VAT, date and supplier are filled in for you</div></div>
+    <input type="file" accept="application/pdf,.pdf" id="arFileInput" multiple style="display:none;">
+        <div id="arList"></div>
+  `;
+  const fileInput=el.querySelector("#arFileInput");
+  const drop=el.querySelector("#arDrop");
+  drop.addEventListener("click",()=>fileInput.click());
+  drop.addEventListener("dragover",e=>{ e.preventDefault(); drop.classList.add("over"); });
+  drop.addEventListener("dragleave",()=>drop.classList.remove("over"));
+  drop.addEventListener("drop",e=>{
+    e.preventDefault(); drop.classList.remove("over");
+  });
+  fileInput.addEventListener("change",()=>{
+    const files=[...fileInput.files];
+    fileInput.value="";
+    if(files.length) importReceiptFiles(files);
+  });
+
+
+  const box=el.querySelector("#arList");
+  if(list.length===0){
+    box.innerHTML=`<div class="empty">No invoices saved yet.</div>`;
+    return;
+  }
+  box.innerHTML=list.map(t=>{
+    const c=catById(t.category);
+    return `<div class="row" data-txid="${t.id}">
+      <span class="catdot" style="background:${c?c.color:"#999"}"></span>
+      <div class="mid"><b>${t.description||(c?c.label:"Invoice")}</b><span>${fmtDate(t.date)} · ${t.attachmentName||"PDF"}</span></div>
+      <div class="amt ${t.type}">${t.type==="income"?"+":"−"}${money(Math.abs(t.amount))}</div>
+    </div>`;
+  }).join("");
+  box.querySelectorAll("[data-txid]").forEach(row=>{
+    row.addEventListener("click",()=>openTxForm(TRANSACTIONS.find(t=>t.id===row.dataset.txid)));
+  });
+}
+
+/* =========================================================
+   VAT SUMMARY
+========================================================= */
+let vatQOffset=0;
+function renderVat(){
+  const el=document.getElementById("view-vat");
+  const base=new Date(); base.setMonth(base.getMonth()+vatQOffset*3);
+  const qs=quarterStart(base), qe=quarterEnd(base);
+  const qsISO=toISO(qs), qeISO=toISO(qe);
+  const qTx=TRANSACTIONS.filter(t=>t.date>=qsISO && t.date<=qeISO);
+  const outputVat=qTx.filter(t=>t.type==="income").reduce((s,t)=>s+vatAmountFromGross(t.amount,t.vatRate||0),0);
+  const inputVat=qTx.filter(t=>t.type==="expense").reduce((s,t)=>s+vatAmountFromGross(t.amount,t.vatRate||0),0);
+  const net=outputVat-inputVat;
+  el.innerHTML=`
+    <div class="pagehead"><div><div class="eyebrow">VAT</div><h2>Quarterly Summary</h2></div></div>
+    ${!SETTINGS.vatEnabled?`<div class="empty">VAT tracking is turned off.<br><button class="btn btn-accent" id="enableVatBtn">Turn on VAT tracking</button></div>`:`
+    <div class="weekbar">
+      <button class="iconbtn" id="vPrev">${ICONS.back}</button>
+      <div class="range">${quarterLabel(base)}</div>
+      <button class="iconbtn" id="vNext" ${vatQOffset>=0?'disabled style="opacity:.3"':""}>${ICONS.chev}</button>
+    </div>
+    <div class="stat-row two">
+      <div class="stat-tile income"><b class="tabular">${money(outputVat)}</b><span>VAT on Sales</span></div>
+      <div class="stat-tile expense"><b class="tabular">${money(inputVat)}</b><span>VAT on Purchases</span></div>
+    </div>
+    <div class="card" style="padding:18px; text-align:center; margin-bottom:20px;">
+      <div style="font-size:11.5px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px;">${net>=0?"Owed to HMRC":"Reclaimable from HMRC"}</div>
+      <div style="font-family:'Newsreader',serif; font-weight:700; font-size:30px; color:${net>=0?"var(--danger)":"var(--accent)"};">${money(Math.abs(net))}</div>
+    </div>
+    <p style="color:var(--ink-soft); font-size:12.5px;">Based on ${qTx.length} transaction${qTx.length===1?"":"s"} dated ${fmtDate(qsISO)} – ${fmtDate(qeISO)}. This is a simple estimate from your ledger, not a formal VAT return.</p>
+    <button class="btn btn-ghost btn-block" id="vPrintBtn" style="margin-top:6px;">${ICONS.print} Print / Save PDF</button>
+    <div class="invoice-sheet print-sheet">
+      ${reportHeaderHTML("VAT Summary", [quarterLabel(base), `${fmtDate(qsISO)} – ${fmtDate(qeISO)}`])}
+      <table class="itable">
+        <thead><tr><th>Date</th><th>Description</th><th>Category</th><th class="num">Net</th><th class="num">VAT</th></tr></thead>
+        <tbody>${qTx.length?qTx.slice().sort((a,b)=> a.date<b.date?-1:a.date>b.date?1:0).map(t=>{
+          const c=catById(t.category); const v=vatAmountFromGross(t.amount,t.vatRate||0);
+          return `<tr><td>${fmtDate(t.date)}</td><td>${t.description||"—"}</td><td>${c?c.label:"Uncategorised"}</td><td class="num tabular">${t.type==="income"?"":"-"}${money(Math.abs(t.amount-v))}</td><td class="num tabular">${t.type==="income"?"":"-"}${money(v)}</td></tr>`;
+        }).join(""):`<tr><td colspan="5" style="color:var(--ink-soft);">No transactions in this quarter.</td></tr>`}</tbody>
+      </table>
+      <div class="itotals">
+        <div><span>VAT on Sales</span><span class="tabular">${money(outputVat)}</span></div>
+        <div><span>VAT on Purchases</span><span class="tabular">${money(inputVat)}</span></div>
+        <div class="grand"><span>${net>=0?"Owed to HMRC":"Reclaimable from HMRC"}</span><span class="tabular">${money(Math.abs(net))}</span></div>
+      </div>
+    </div>
+    `}
+  `;
+  const eb=el.querySelector("#enableVatBtn");
+  if(eb) eb.addEventListener("click",()=>{ SETTINGS.vatEnabled=true; saveSettings(); renderVat(); });
+  const pv=el.querySelector("#vPrev"); if(pv) pv.addEventListener("click",()=>{ vatQOffset--; renderVat(); });
+  const nv=el.querySelector("#vNext"); if(nv && vatQOffset<0) nv.addEventListener("click",()=>{ vatQOffset++; renderVat(); });
+  const vp=el.querySelector("#vPrintBtn"); if(vp) vp.addEventListener("click",()=>window.print());
+}
+
+/* =========================================================
+   CATEGORIES MANAGEMENT
+========================================================= */
+function renderCategories(){
+  const el=document.getElementById("view-categories");
+  el.innerHTML=`
+    <div class="pagehead"><div><div class="eyebrow">${CATEGORIES.length} Categories</div><h2>Categories</h2></div></div>
+    <div class="field"><input type="text" id="newCatName" placeholder="New category name"></div>
+    <div class="segrow" id="newCatSeg">
+      <button class="seg active" data-t="expense">Expense</button>
+      <button class="seg" data-t="income">Income</button>
+    </div>
+    <button class="btn btn-ghost btn-block" id="addCatBtn" style="margin-bottom:22px;">+ Add Category</button>
+    <div class="section-label">Income</div>
+    <div id="catIncome"></div>
+    <div class="section-label">Expense</div>
+    <div id="catExpense"></div>
+  `;
+  let newType="expense";
+  el.querySelectorAll("#newCatSeg .seg").forEach(b=>b.addEventListener("click",()=>{ newType=b.dataset.t; el.querySelectorAll("#newCatSeg .seg").forEach(x=>x.classList.toggle("active",x===b)); }));
+  el.querySelector("#addCatBtn").addEventListener("click",()=>{
+    const input=el.querySelector("#newCatName");
+    const label=input.value.trim();
+    if(!label) return;
+    const colors=["#1F5C4A","#8C4A2E","#2E6A8C","#5A2E8C","#8C2E6A","#6A8C2E"];
+    CATEGORIES.push({id:uid("cat"), label, type:newType, color:colors[CATEGORIES.length%colors.length]});
+    saveCategories();
+    input.value="";
+    renderCategories();
+  });
+  function catRow(c){
+    const inUse=TRANSACTIONS.some(t=>t.category===c.id);
+    return `<div class="row" data-cat="${c.id}" style="cursor:default;">
+      <span class="catdot" style="background:${c.color}"></span>
+      <div class="mid"><b>${c.label}</b>${inUse?'<span>In use</span>':""}</div>
+      <button class="inline-del" data-delcat="${c.id}" ${inUse?"disabled":""} title="${inUse?"Category in use":"Delete"}">${ICONS.trash}</button>
+    </div>`;
+  }
+  el.querySelector("#catIncome").innerHTML=CATEGORIES.filter(c=>c.type==="income").map(catRow).join("")||`<div class="empty">None yet.</div>`;
+  el.querySelector("#catExpense").innerHTML=CATEGORIES.filter(c=>c.type==="expense").map(catRow).join("")||`<div class="empty">None yet.</div>`;
+  el.querySelectorAll("[data-delcat]").forEach(b=>{
+    if(b.disabled) return;
+    b.addEventListener("click",()=>{
+      CATEGORIES=CATEGORIES.filter(c=>c.id!==b.dataset.delcat);
+      saveCategories();
+      renderCategories();
+    });
+  });
+}
+
+/* =========================================================
+   SETTINGS
+========================================================= */
+function renderSettings(){
+  const el=document.getElementById("view-settings");
+  el.innerHTML=`
+    <div class="pagehead"><div><div class="eyebrow">Settings</div><h2>Your Company</h2></div></div>
+    <div class="field"><label>Company Name</label><input type="text" id="sName" value="${SETTINGS.companyName}"></div>
+    <div class="field"><label>Address</label><textarea id="sAddress">${SETTINGS.address}</textarea></div>
+    <div class="field-row">
+      <div class="field"><label>Email</label><input type="email" id="sEmail" value="${SETTINGS.email}"></div>
+      <div class="field"><label>Phone</label><input type="text" id="sPhone" value="${SETTINGS.phone}"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Companies House No.</label><input type="text" id="sReg" value="${SETTINGS.regNumber}"></div>
+      <div class="field"><label>VAT Number</label><input type="text" id="sVatNo" value="${SETTINGS.vatNumber}"></div>
+    </div>
+    <div class="field" style="display:flex; align-items:center; justify-content:space-between; background:var(--surface); border:1px solid var(--border); border-radius:11px; padding:13px;">
+      <label style="margin:0;">VAT Registered</label>
+      <input type="checkbox" id="sVatEnabled" ${SETTINGS.vatEnabled?"checked":""} style="width:20px;height:20px;">
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Invoice Prefix</label><input type="text" id="sInvPrefix" value="${SETTINGS.invoicePrefix}"></div>
+      <div class="field"><label>Next Invoice #</label><input type="number" id="sInvNext" value="${SETTINGS.nextInvoiceNumber}"></div>
+    </div>
+    <button class="btn btn-accent btn-block" id="sSave">Save Settings</button>
+    <div class="section-label">Data</div>
+    <div class="field" style="display:flex; align-items:center; justify-content:space-between; background:var(--surface); border:1px solid var(--border); border-radius:11px; padding:13px;">
+      <label style="margin:0;">Cloud Sync</label>
+      <span id="syncStatusLine" style="font-size:12.5px; color:var(--ink-soft);"></span>
+    </div>
+    <button class="btn btn-ghost btn-block" id="sExport">Export All Data (JSON)</button>
+    <button class="btn btn-ghost btn-block" id="sImport" style="margin-top:10px;">Import Data (JSON)</button>
+    <input type="file" id="sImportFile" accept=".json,application/json" hidden>
+    <div id="sImportMsg" class="note" style="margin-top:8px;"></div>
+    <p class="note" style="margin-top:10px;">Everything is saved in this browser on this device. Use Export regularly as a backup, and Import to move your data to another device or browser. Attached PDFs stay on the device they were added on.</p>
+  `;
+  renderSettingsSyncStatus();
+  el.querySelector("#sSave").addEventListener("click",()=>{
+    SETTINGS.companyName=el.querySelector("#sName").value.trim();
+    SETTINGS.address=el.querySelector("#sAddress").value.trim();
+    SETTINGS.email=el.querySelector("#sEmail").value.trim();
+    SETTINGS.phone=el.querySelector("#sPhone").value.trim();
+    SETTINGS.regNumber=el.querySelector("#sReg").value.trim();
+    SETTINGS.vatNumber=el.querySelector("#sVatNo").value.trim();
+    SETTINGS.vatEnabled=el.querySelector("#sVatEnabled").checked;
+    SETTINGS.invoicePrefix=el.querySelector("#sInvPrefix").value.trim()||"INV-";
+    SETTINGS.nextInvoiceNumber=parseInt(el.querySelector("#sInvNext").value)||1;
+    saveSettings();
+    showTab("more");
+  });
+  const importBtn=el.querySelector("#sImport"), importFile=el.querySelector("#sImportFile"), importMsg=el.querySelector("#sImportMsg");
+  let pendingImport=null;
+  importBtn.addEventListener("click",()=>{
+    if(pendingImport){
+      applyCloudData(pendingImport);
+      const n=(pendingImport.TRANSACTIONS||[]).length;
+      pendingImport=null;
+      showToast("Imported "+n+" transaction"+(n===1?"":"s"));
+      showTab("dashboard");
+      return;
+    }
+    importFile.click();
+  });
+  importFile.addEventListener("change",async()=>{
+    const f=importFile.files[0]; importFile.value="";
+    if(!f) return;
+    try{
+      const data=JSON.parse(await f.text());
+      if(!data || !Array.isArray(data.TRANSACTIONS) || !data.SETTINGS) throw new Error("not a ledger export");
+      pendingImport=data;
+      importMsg.innerHTML=`<b style="color:var(--danger);">This replaces everything in this app</b> with ${data.TRANSACTIONS.length} transactions, ${(data.INVOICES||[]).length} invoices and ${(data.CLIENTS||[]).length} clients from <b>${escHTML(f.name)}</b>. Click <b>Replace my data</b> to continue.`;
+      importBtn.textContent="Replace my data";
+      importBtn.classList.add("btn-danger"); importBtn.classList.remove("btn-ghost");
+    }catch(e){
+      pendingImport=null;
+      importMsg.innerHTML=`<span style="color:var(--danger);">That file isn't a ledger export. Choose the .json file made by Export All Data.</span>`;
+    }
+  });
+  el.querySelector("#sExport").addEventListener("click", async ()=>{
+    const data={SETTINGS,CATEGORIES,TRANSACTIONS,INVOICES,CLIENTS,MILEAGE,PROPERTIES,TENANCIES,CERTIFICATES,LOANS,LOAN_REPAYMENTS};
+    const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+    const downloads = (window.claude && typeof window.claude.use==="function") ? await window.claude.use("downloads") : null;
+    if(downloads){
+      try{ await downloads.save({filename:"ledger-export.json", data:blob}); }catch(e){ /* declined or unavailable */ }
+      return;
+    }
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url; a.download="ledger-export.json";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+}
+
+/* =========================================================
+   MORE MENU
+========================================================= */
+function renderMore(){
+  const el=document.getElementById("view-more");
+  const unpaidTotal=INVOICES.filter(i=>i.status!=="paid").reduce((s,i)=>s+invoiceTotal(i).total,0);
+  el.innerHTML=`
+    <div class="pagehead"><div><div class="eyebrow">More</div><h2>Manage</h2></div></div>
+    <div class="more-row" data-go="plreport"><div class="glyph">${ICONS.chart}</div><div class="txt"><b>Profit &amp; Loss Report</b><span>Combined report across all properties</span></div><span class="chev">${ICONS.chev}</span></div>
+    <div class="more-row" data-go="archive"><div class="glyph">${ICONS.paperclip}</div><div class="txt"><b>Invoice Archive</b><span>${archivedTransactions().length} saved invoice${archivedTransactions().length===1?"":"s"}</span></div><span class="chev">${ICONS.chev}</span></div>
+    <div class="more-row" data-go="loans"><div class="glyph">${ICONS.bank}</div><div class="txt"><b>Loans &amp; Interest</b><span>${LOANS.length?money(LOANS.reduce((s,l)=>s+loanBalance(l),0))+" outstanding":"No loans logged"}</span></div><span class="chev">${ICONS.chev}</span></div>
+    <div class="more-row" data-go="mileage"><div class="glyph">${ICONS.car}</div><div class="txt"><b>Mileage</b><span>${MILEAGE.length} trip${MILEAGE.length===1?"":"s"} logged</span></div><span class="chev">${ICONS.chev}</span></div>
+    <div class="more-row" data-go="vat"><div class="glyph">${ICONS.percent}</div><div class="txt"><b>VAT Summary</b><span>${SETTINGS.vatEnabled?"View quarterly position":"Currently off"}</span></div><span class="chev">${ICONS.chev}</span></div>
+    <div class="more-row" data-go="clients"><div class="glyph">${ICONS.users}</div><div class="txt"><b>Clients</b><span>${CLIENTS.length} saved</span></div><span class="chev">${ICONS.chev}</span></div>
+    <div class="more-row" data-go="categories"><div class="glyph">${ICONS.tag}</div><div class="txt"><b>Categories</b><span>${CATEGORIES.length} categories</span></div><span class="chev">${ICONS.chev}</span></div>
+    <div class="more-row" data-go="settings"><div class="glyph">${ICONS.gear}</div><div class="txt"><b>Company Settings</b><span>${SETTINGS.companyName||"Add your company details"}</span></div><span class="chev">${ICONS.chev}</span></div>
+  `;
+  const GO={plreport:renderPLReport, archive:renderArchive, loans:renderLoans, mileage:renderMileage, vat:renderVat, clients:renderClients, categories:renderCategories, settings:renderSettings};
+  el.querySelectorAll("[data-go]").forEach(row=>{
+    row.addEventListener("click",()=>{
+      navReturn="more";
+      pushView(row.dataset.go, GO[row.dataset.go]);
+    });
+  });
+}
+
+/* =========================================================
+   INIT
+========================================================= */
+RENDERERS.dashboard=renderDashboard;
+RENDERERS.properties=renderProperties;
+RENDERERS.ledger=renderLedger;
+RENDERERS.invoices=renderInvoices;
+RENDERERS.more=renderMore;
+
+buildTabbar();
+wireGlobalDrop();
+showTab("dashboard");
+initCloudSync();
+
+})();
+</script>
+
+<script>
+if("serviceWorker" in navigator){ addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{})); }
+if(navigator.storage && navigator.storage.persist){ navigator.storage.persist().catch(()=>{}); }
+</script>
+</body>
+</html>
