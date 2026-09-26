@@ -242,6 +242,15 @@
   .ghostfab{width:44px; height:44px; border-radius:12px; background:var(--surface); color:var(--accent); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; cursor:pointer;}
   .ghostfab svg{width:19px; height:19px;}
   @media (min-width:720px){ .toast{bottom:28px;} }
+  .list-head{display:flex; align-items:center; justify-content:space-between; margin:22px 0 10px;}
+  .list-head .section-label{margin:0;}
+  .linkbtn{background:none; border:none; color:var(--accent); font:inherit; font-size:13.5px; font-weight:600; cursor:pointer; padding:4px 2px;}
+  .row .selbox{width:20px; height:20px; flex:none; accent-color:var(--accent); pointer-events:none;}
+  .row.picked{border-color:var(--accent); background:color-mix(in srgb, var(--accent) 8%, var(--surface));}
+  .selbar{position:sticky; bottom:calc(76px + var(--safe-b)); z-index:15; display:flex; align-items:center; gap:10px; margin-top:12px; padding:10px 12px; background:var(--surface); border:1px solid var(--border); border-radius:12px; box-shadow:var(--shadow);}
+  .selbar .count{flex:1; font-size:13.5px; font-weight:600;}
+  .selbar .btn{padding:9px 14px; width:auto;}
+  @media (min-width:720px){ .selbar{bottom:12px;} }
   .batch-item{padding:14px; margin-bottom:12px;}
   .batch-item.off{opacity:.55;}
   .batch-item .field{margin-bottom:10px;}
@@ -1387,11 +1396,12 @@ function periodRanges(){
 function periodChipsHTML(from,to){
   return periodRanges().map(r=>`<button class="chip ${r.from===(from||"")&&r.to===(to||"")?"active":""}" data-from="${r.from}" data-to="${r.to}">${r.label}</button>`).join("");
 }
-function txRowHTML(t){
+function txRowHTML(t, sel){
   const c=catById(t.category);
   const p=t.propertyId?propertyById(t.propertyId):null;
-  return `<div class="row" data-txid="${t.id}">
-    <span class="catdot" style="background:${c?c.color:"#999"}"></span>
+  const picked=sel&&sel.has(t.id);
+  return `<div class="row${picked?" picked":""}" data-txid="${t.id}">
+    ${sel?`<input type="checkbox" class="selbox" tabindex="-1" aria-hidden="true" ${picked?"checked":""}>`:`<span class="catdot" style="background:${c?c.color:"#999"}"></span>`}
     <div class="mid"><b>${t.description||(c?c.label:"Transaction")}</b><span>${fmtDate(t.date)} · ${c?c.label:"Uncategorised"}${p?" · "+propertyLabel(p):""}</span>${t.attachmentName?`<span class="fname" title="${escAttr(t.attachmentName)}">${ICONS.paperclip}<em>${escHTML(t.attachmentName)}</em></span>`:""}</div>
     ${t.attachmentId?`<span class="clip" title="Invoice attached">${ICONS.paperclip}</span>`:""}
     <div class="amt ${t.type}">${t.type==="income"?"+":"−"}${money(Math.abs(t.amount))}</div>
@@ -1410,6 +1420,12 @@ function wireTxRows(container, returnPropertyId){
    LEDGER
 ========================================================= */
 let ledgerFilter="all", ledgerSearch="", ledgerFrom="", ledgerTo="";
+let ledgerSel=null; // Set of selected transaction ids while in select mode, otherwise null
+function deleteTransactions(ids){
+  TRANSACTIONS.forEach(t=>{ if(ids.has(t.id) && t.attachmentId) deleteAttachment(t.attachmentId); });
+  TRANSACTIONS=TRANSACTIONS.filter(t=>!ids.has(t.id));
+  saveTransactions();
+}
 function renderLedger(){
   const el=document.getElementById("view-ledger");
   el.innerHTML=`
@@ -1435,7 +1451,13 @@ function renderLedger(){
       <div class="field"><label>To</label><input type="date" id="lTo" value="${ledgerTo}"></div>
     </div>
     <button class="btn btn-ghost btn-block" id="lPrintBtn" style="margin-bottom:20px;">${ICONS.print} Print / Save PDF Report</button>
+    <div class="list-head"><div class="section-label">Transactions</div><button class="linkbtn" id="lSelBtn"></button></div>
     <div id="lList"></div>
+    <div class="selbar" id="lSelBar" hidden>
+      <span class="count" id="lSelCount"></span>
+      <button class="btn btn-ghost" id="lSelAll"></button>
+      <button class="btn btn-danger" id="lSelDel"></button>
+    </div>
     <div class="invoice-sheet print-sheet" id="lPrintSheet"></div>
   `;
   el.querySelector("#lAddBtn").addEventListener("click",()=>openTxForm(null));
@@ -1477,9 +1499,17 @@ function renderLedger(){
       box.innerHTML=`<div class="empty">No transactions match.<br><button class="btn btn-accent" id="lEmptyAdd">+ Add Transaction</button></div>`;
       box.querySelector("#lEmptyAdd").addEventListener("click",()=>openTxForm(null));
     } else {
-      box.innerHTML=list.map(txRowHTML).join("");
-      wireTxRows(box);
+      box.innerHTML=list.map(t=>txRowHTML(t, ledgerSel)).join("");
+      if(ledgerSel) box.querySelectorAll("[data-txid]").forEach(row=>row.addEventListener("click",()=>{
+        const id=row.dataset.txid;
+        if(ledgerSel.has(id)) ledgerSel.delete(id); else ledgerSel.add(id);
+        row.classList.toggle("picked", ledgerSel.has(id));
+        row.querySelector(".selbox").checked=ledgerSel.has(id);
+        updateSelBar();
+      }));
+      else wireTxRows(box);
     }
+    updateSelBar();
 
     const rangeLabel = ledgerFrom||ledgerTo ? `${ledgerFrom?fmtDate(ledgerFrom):"Start"} – ${ledgerTo?fmtDate(ledgerTo):"Present"}` : "All dates";
     const typeLabel = ledgerFilter==="all"?"Income, Expenses & Drawings":ledgerFilter==="income"?"Income":ledgerFilter==="drawings"?"Drawings":"Expenses";
@@ -1500,6 +1530,42 @@ function renderLedger(){
       </div>
     `;
   }
+
+  let delArmed=false;
+  function updateSelBar(){
+    const list=filteredList();
+    const selBtn=el.querySelector("#lSelBtn");
+    selBtn.textContent=ledgerSel?"Done":"Select";
+    selBtn.hidden=!ledgerSel && !list.length;
+    const bar=el.querySelector("#lSelBar");
+    bar.hidden=!ledgerSel;
+    if(!ledgerSel) return;
+    // Drop any selected ids that the current filters now hide, so Delete only touches what's visible
+    const visible=new Set(list.map(t=>t.id));
+    [...ledgerSel].forEach(id=>{ if(!visible.has(id)) ledgerSel.delete(id); });
+    const n=ledgerSel.size;
+    el.querySelector("#lSelCount").textContent=n+" selected";
+    el.querySelector("#lSelAll").textContent=n===list.length&&n?"Clear":"Select all";
+    const del=el.querySelector("#lSelDel");
+    if(!n) delArmed=false;
+    del.disabled=!n;
+    del.innerHTML=delArmed?`Tap again to delete ${n}`:`${ICONS.trash} Delete${n?" "+n:""}`;
+  }
+  el.querySelector("#lSelBtn").addEventListener("click",()=>{ ledgerSel=ledgerSel?null:new Set(); delArmed=false; renderList(); });
+  el.querySelector("#lSelAll").addEventListener("click",()=>{
+    const list=filteredList();
+    ledgerSel = ledgerSel.size===list.length ? new Set() : new Set(list.map(t=>t.id));
+    delArmed=false; renderList();
+  });
+  el.querySelector("#lSelDel").addEventListener("click",()=>{
+    if(!ledgerSel||!ledgerSel.size) return;
+    if(!delArmed){ delArmed=true; updateSelBar(); return; }
+    const n=ledgerSel.size;
+    deleteTransactions(ledgerSel);
+    ledgerSel=null; delArmed=false;
+    renderLedger();
+    showToast("Deleted "+n+" transaction"+(n===1?"":"s"));
+  });
   renderList();
 }
 

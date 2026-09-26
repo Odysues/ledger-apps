@@ -1,7 +1,7 @@
 // Offline support: app shell is cached on install; pages go network-first so updates arrive,
 // everything else (pdf.js, fonts) is served from cache and refreshed in the background.
 const PREFIX = "sole-";
-const CACHE = PREFIX + "v3";
+const CACHE = PREFIX + "v4";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png", "../firebase-config.js",
   "https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js",
   "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js",
