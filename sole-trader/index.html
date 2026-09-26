@@ -1317,9 +1317,9 @@ function renderDashboard(){
     ${TRANSACTIONS.length>recent.length?`<button class="btn btn-ghost btn-block" id="dViewAll" style="margin-bottom:10px;">View all ${TRANSACTIONS.length} transactions</button>`:""}
     <div style="display:flex; gap:10px; margin-top:6px;">
       <button class="btn btn-ghost" style="flex:1;" id="dAddBtn">+ Add Transaction</button>
-      <button class="btn btn-ghost" style="flex:1;" id="dScanBtn">${ICONS.upload} Scan PDF</button>
+      <button class="btn btn-ghost" style="flex:1;" id="dScanBtn">${ICONS.upload} Scan PDFs</button>
     </div>
-    <p class="note" style="text-align:center; margin-top:10px;">Tip: drag a PDF invoice or receipt anywhere onto the app to add it.</p>
+    <p class="note" style="text-align:center; margin-top:10px;">Tip: pick or drag several PDF invoices or receipts at once. Each one is read and you review them all on one screen.</p>
   `;
   el.querySelector("#dPrev").addEventListener("click",()=>{ dashMonthOffset--; renderDashboard(); });
   const nextBtn=el.querySelector("#dNext");
@@ -1416,7 +1416,7 @@ function renderLedger(){
     <div class="pagehead">
       <div><div class="eyebrow">All Transactions</div><h2>Ledger</h2></div>
       <div class="pagehead-actions">
-        <button class="ghostfab" id="lScanBtn" aria-label="Scan a PDF" title="Scan a PDF invoice or receipt">${ICONS.upload}</button>
+        <button class="ghostfab" id="lScanBtn" aria-label="Scan PDFs" title="Scan one or more PDF invoices or receipts">${ICONS.upload}</button>
         <button class="fabbtn" id="lAddBtn" aria-label="Add transaction">${ICONS.plus}</button>
       </div>
     </div>
@@ -2297,7 +2297,7 @@ function renderPropertyDetail(propertyId){
     <div id="propTxList"></div>
     <div style="display:flex; gap:10px; margin-top:10px;">
       <button class="btn btn-ghost" style="flex:1;" id="addTxBtn">+ Add Transaction</button>
-      <button class="btn btn-ghost" style="flex:1;" id="scanTxBtn">${ICONS.upload} Scan PDF</button>
+      <button class="btn btn-ghost" style="flex:1;" id="scanTxBtn">${ICONS.upload} Scan PDFs</button>
     </div>
 
     <div style="display:flex; gap:10px; margin-top:20px;">
